@@ -1,0 +1,28 @@
+text editor
+
+terminal emulator
+	app -- flutter (xterm.dart)
+	desktop application -- gtk (js(less priority), python, rust)
+	web -- depends (wasm (rust), js(vanilla or react)
+
+Features
+	terminal based
+	gui platform
+	modes 
+		visual
+		insert
+		normanl
+		search
+	auto indent
+	cut, copy, paste, delete
+	word wrap
+	font
+	tabsize
+
+git repo tree
+	kass
+		text-editor d--
+		flutter-app d--
+		gtk-app d--
+		README.md ---
+		web d--

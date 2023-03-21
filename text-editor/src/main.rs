@@ -1,22 +1,28 @@
-use std::{
-    fs::OpenOptions,
-    io::{stdin, Write},
-};
+use crossterm::{execute, terminal, Result};
+use std::io::{stdin, stdout, Read};
 
-fn main() {
-    let mut text = String::new();
+fn main() -> Result<()> {
+    let mut stdout = stdout();
 
-    // open a file
-    let mut myfile = OpenOptions::new()
-        .append(true)
-        .open("/home/abhiyan/hello.txt")
-        .expect("couldn't open file");
+    execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
 
-    loop {
-        stdin()
-            .read_line(&mut text)
-            .expect("couldn't read the line");
+    let mut colon_pressed = false;
 
-        myfile.write(&text.as_bytes()).expect("couldn't append");
+    for i in stdin().bytes() {
+        let character = i.unwrap() as char;
+        print!("{}", character);
+
+        // colon
+        if character == ':' {
+            colon_pressed = true;
+        }
+
+        if colon_pressed {
+            if character == 'q' {
+                break;
+            }
+        }
     }
+
+    Ok(())
 }

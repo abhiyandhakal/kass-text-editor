@@ -1,56 +1,72 @@
-use crossterm::{execute, terminal, Result};
-use std::{
-    collections::LinkedList,
-    fs::OpenOptions,
-    io::{stdin, stdout, Read, Write},
-};
+use crossterm::{cursor, execute, terminal};
+use std::collections::LinkedList;
+use std::fs::{self, read_to_string};
+use std::io::{stdin, stdout, Read, Result, Write};
 
-mod stack;
+struct CleanUp;
+
+impl CleanUp {
+    fn clean(&self) {
+        // disables raw mode, terminal goes back to normal
+        terminal::disable_raw_mode().expect("couldn't disable raw mode");
+    }
+}
 
 fn main() -> Result<()> {
+    let _clean_up = CleanUp;
+
     let mut stdout = stdout();
 
-    let mut line_stack = stack::Stack {
-        list: LinkedList::new(),
-    };
-    println!("popped element: {}", line_stack.pop());
+    // enables raw mode, terminal commands don't work
+    terminal::enable_raw_mode()?;
 
-    // clears the terminal
-    execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
-
-    // // commands like <Ctrl-z>, <Ctrl-c> don't work
-    // // Right now, nothing works, so commented
-    // terminal::enable_raw_mode()?;
-
-    // checks if the colon is pressed to enter a command
-    let mut colon_pressed = false;
+    // clear terminal
+    execute!(stdout, terminal::Clear(terminal::ClearType::FromCursorUp))?;
+    execute!(stdout, cursor::MoveTo(0, 0))?;
 
     // open a file
-    let mut myfile = OpenOptions::new()
-        .append(true)
-        .open("/home/abhiyan/hello.txt")?;
+    let mut myfile = fs::OpenOptions::new().append(true).open("hello.txt")?;
 
-    // reads through every character entered
-    for i in stdin().bytes() {
-        let character = i.unwrap() as char;
-        print!("{}", character);
+    // read the file
+    let contents = read_to_string("hello.txt")?;
 
-        if character == ':' {
-            colon_pressed = true;
+    let mut character_list = LinkedList::new();
+
+    // itering contents and storing in a linked list
+    let _contents = contents.clone();
+    for c in _contents.into_bytes().iter() {
+        let character = *c as char;
+
+        character_list.push_back(character);
+    }
+
+    // print the previous contents of the file
+    print!("{}", contents);
+    stdout.flush()?;
+
+    let mut buffer = [0];
+
+    while stdin().read(&mut buffer)? == 1 {
+        let character = buffer[0] as char;
+
+        // quit if 'q' is typed
+        if character == 'q' {
+            break;
         }
 
-        let character_arr = [character as u8];
-        myfile.write(&character_arr)?;
+        if !character.is_control() {
+            // instantaneous printing of typed characters
+            print!("{}", buffer[0] as char);
+            stdout.flush()?;
 
-        if colon_pressed {
-            // quit
-            if character == 'q' {
-                break;
-            } else if character == 'w' {
-                println!("write");
-            }
+            myfile.write(&[character as u8])?;
+        } else {
+            print!("{}", character as u8);
+            stdout.flush()?;
         }
     }
+
+    _clean_up.clean();
 
     Ok(())
 }

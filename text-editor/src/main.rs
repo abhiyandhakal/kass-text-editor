@@ -1,21 +1,11 @@
-use crossterm::terminal;
+use crossterm::{cursor, execute, terminal};
 use std::{
     io::{stdin, stdout, Read, Result, Write},
-    mem::discriminant,
+    process::exit,
 };
 
-struct RawMode;
-
-impl RawMode {
-    fn enable(&self) {
-        terminal::enable_raw_mode().expect("could not enable raw mode");
-    }
-    fn disable(&self) {
-        terminal::disable_raw_mode().expect("could not disable raw mode");
-    }
-}
-
 // modes
+#[derive(Copy, Clone)]
 enum Mode {
     Insert,
     Normal,
@@ -24,69 +14,99 @@ enum Mode {
 }
 
 fn main() -> Result<()> {
-    let _raw_mode = RawMode;
-    let mut stdout = stdout();
     let mut stdin = stdin();
+    let mut stdout = stdout();
+
+    // clear terminal
+    execute!(stdout, terminal::Clear(terminal::ClearType::FromCursorUp))?;
+    execute!(stdout, cursor::MoveTo(0, 0))?;
 
     // modes
-    let mut mode = Mode::Insert;
+    let mut mode = Mode::Normal;
+    let mut mode_changed: bool = false;
 
     // enable raw mode
-    _raw_mode.enable();
+    terminal::enable_raw_mode().expect("could not enable raw mode");
 
     let mut buf = [0; 1];
 
     while stdin.read(&mut buf)? == 1 {
         let character = buf[0] as char;
 
-        mode = handle_modes(&mode, character as u8);
+        (mode, mode_changed) = handle_modes(&mode, character as u8);
 
-        if character == 'q' {
-            break;
-        }
-
-        if character.is_control() {
-            print!("{}", character as u8);
-            stdout.flush()?;
-        } else {
-            print!("{}", character);
-            stdout.flush()?;
+        if !mode_changed {
+            match mode {
+                Mode::Insert => handle_insert_mode(character, &mut mode_changed),
+                Mode::Command => handle_command_mode(character, &mut mode_changed),
+                Mode::Normal => {}
+                _ => {
+                    println!("\ridk what is happening")
+                }
+            }
         }
     }
 
-    // disable raw mode
-    _raw_mode.disable();
+    terminal::disable_raw_mode().expect("could not disable raw mode");
 
     Ok(())
 }
 
 // handle modes
-fn handle_modes(current_mode: &Mode, pressed_key_code: u8) -> Mode {
+fn handle_modes(current_mode: &Mode, pressed_key_code: u8) -> (Mode, bool) {
     let mut new_mode: Mode = *current_mode;
+    let mut mode_changed: bool = true;
 
-    if discriminant(current_mode) == discriminant(&Mode::Normal) {
-    } else {
-    }
-
-    match current_mode {
-        &Mode::Normal => {
-            println!("\r{pressed_key_code}");
-
+    match *current_mode {
+        Mode::Normal => {
             match pressed_key_code {
-                105 => new_mode = Mode::Insert,
-                _ => new_mode = Mode::Normal,
+                // insert mode
+                105 => new_mode = Mode::Insert, // i
+                97 => new_mode = Mode::Insert,  // a
+
+                // visual mode
+                118 => new_mode = Mode::Visual, // v
+
+                // command mode
+                58 => new_mode = Mode::Command, // :
+
+                _ => {
+                    mode_changed = false;
+                }
             }
         }
-        _ => println!("\r wtf are u doing here??"),
+        _ => {
+            // go back to normal mode
+            match pressed_key_code {
+                27 => new_mode = Mode::Normal, // Esc
+                _ => {
+                    mode_changed = false;
+                }
+            }
+        }
     }
 
-    // if discriminant(&new_mode) == discriminant(&Mode::Normal) {
-    //     println!("\rnormal");
-    // } else if discriminant(&new_mode) == discriminant(&Mode::Insert) {
-    //     println!("\rInsert");
-    // } else if discriminant(&new_mode) == discriminant(&Mode::Visual) {
-    //     println!("\rvisual");
-    // }
+    (new_mode, mode_changed)
+}
 
-    new_mode
+// insert mode task
+fn handle_insert_mode(character: char, mode_changed: &mut bool) {
+    if !character.is_control() {
+        print!("{}", character);
+        stdout().flush().expect("could not flush");
+    }
+
+    *mode_changed = false;
+}
+
+fn handle_command_mode(character: char, mode_changed: &mut bool) {
+    match character {
+        'q' => {
+            terminal::disable_raw_mode().expect("could not disable raw mode");
+            exit(0)
+        }
+        _ => {}
+    }
+
+    *mode_changed = false;
 }

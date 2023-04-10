@@ -1,72 +1,92 @@
-use crossterm::{cursor, execute, terminal};
-use std::collections::LinkedList;
-use std::fs::{self, read_to_string};
-use std::io::{stdin, stdout, Read, Result, Write};
+use crossterm::terminal;
+use std::{
+    io::{stdin, stdout, Read, Result, Write},
+    mem::discriminant,
+};
 
-struct CleanUp;
+struct RawMode;
 
-impl CleanUp {
-    fn clean(&self) {
-        // disables raw mode, terminal goes back to normal
-        terminal::disable_raw_mode().expect("couldn't disable raw mode");
+impl RawMode {
+    fn enable(&self) {
+        terminal::enable_raw_mode().expect("could not enable raw mode");
+    }
+    fn disable(&self) {
+        terminal::disable_raw_mode().expect("could not disable raw mode");
     }
 }
 
+// modes
+enum Mode {
+    Insert,
+    Normal,
+    Visual,
+    Command,
+}
+
 fn main() -> Result<()> {
-    let _clean_up = CleanUp;
-
+    let _raw_mode = RawMode;
     let mut stdout = stdout();
+    let mut stdin = stdin();
 
-    // enables raw mode, terminal commands don't work
-    terminal::enable_raw_mode()?;
+    // modes
+    let mut mode = Mode::Insert;
 
-    // clear terminal
-    execute!(stdout, terminal::Clear(terminal::ClearType::FromCursorUp))?;
-    execute!(stdout, cursor::MoveTo(0, 0))?;
+    // enable raw mode
+    _raw_mode.enable();
 
-    // open a file
-    let mut myfile = fs::OpenOptions::new().append(true).open("hello.txt")?;
+    let mut buf = [0; 1];
 
-    // read the file
-    let contents = read_to_string("hello.txt")?;
+    while stdin.read(&mut buf)? == 1 {
+        let character = buf[0] as char;
 
-    let mut character_list = LinkedList::new();
+        mode = handle_modes(&mode, character as u8);
 
-    // itering contents and storing in a linked list
-    let _contents = contents.clone();
-    for c in _contents.into_bytes().iter() {
-        let character = *c as char;
-
-        character_list.push_back(character);
-    }
-
-    // print the previous contents of the file
-    print!("{}", contents);
-    stdout.flush()?;
-
-    let mut buffer = [0];
-
-    while stdin().read(&mut buffer)? == 1 {
-        let character = buffer[0] as char;
-
-        // quit if 'q' is typed
         if character == 'q' {
             break;
         }
 
-        if !character.is_control() {
-            // instantaneous printing of typed characters
-            print!("{}", buffer[0] as char);
-            stdout.flush()?;
-
-            myfile.write(&[character as u8])?;
-        } else {
+        if character.is_control() {
             print!("{}", character as u8);
+            stdout.flush()?;
+        } else {
+            print!("{}", character);
             stdout.flush()?;
         }
     }
 
-    _clean_up.clean();
+    // disable raw mode
+    _raw_mode.disable();
 
     Ok(())
+}
+
+// handle modes
+fn handle_modes(current_mode: &Mode, pressed_key_code: u8) -> Mode {
+    let mut new_mode: Mode = *current_mode;
+
+    if discriminant(current_mode) == discriminant(&Mode::Normal) {
+    } else {
+    }
+
+    match current_mode {
+        &Mode::Normal => {
+            println!("\r{pressed_key_code}");
+
+            match pressed_key_code {
+                105 => new_mode = Mode::Insert,
+                _ => new_mode = Mode::Normal,
+            }
+        }
+        _ => println!("\r wtf are u doing here??"),
+    }
+
+    // if discriminant(&new_mode) == discriminant(&Mode::Normal) {
+    //     println!("\rnormal");
+    // } else if discriminant(&new_mode) == discriminant(&Mode::Insert) {
+    //     println!("\rInsert");
+    // } else if discriminant(&new_mode) == discriminant(&Mode::Visual) {
+    //     println!("\rvisual");
+    // }
+
+    new_mode
 }

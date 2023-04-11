@@ -1,11 +1,8 @@
 use crossterm::{cursor, execute, terminal};
-use std::{
-    io::{stdin, stdout, Read, Result, Write},
-    process::exit,
-};
+use std::io::{stdin, stdout, Read, Result, Write};
 
 // modes
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum Mode {
     Insert,
     Normal,
@@ -13,100 +10,103 @@ enum Mode {
     Command,
 }
 
-fn main() -> Result<()> {
-    let mut stdin = stdin();
-    let mut stdout = stdout();
+#[derive(Debug)]
+struct Kass {
+    current_mode: Mode,
+    mode_changed: bool,
 
-    // clear terminal
-    execute!(stdout, terminal::Clear(terminal::ClearType::FromCursorUp))?;
-    execute!(stdout, cursor::MoveTo(0, 0))?;
+    buf: [u8; 1],
+    quit_kass: bool,
+}
 
-    // modes
-    let mut mode = Mode::Normal;
-    let mut mode_changed: bool = false;
+impl Kass {
+    // constructor
+    fn new() -> Kass {
+        // clear terminal
+        execute!(stdout(), terminal::Clear(terminal::ClearType::FromCursorUp))
+            .expect("could not clear terminal");
+        // move cursor to 0,0
+        execute!(stdout(), cursor::MoveTo(0, 0)).expect("could not move cursor to (0,0)");
+        // enable raw mode
+        terminal::enable_raw_mode().expect("could not enable raw mode");
 
-    // enable raw mode
-    terminal::enable_raw_mode().expect("could not enable raw mode");
+        Kass {
+            current_mode: Mode::Normal,
+            mode_changed: false,
+            buf: [0],
+            quit_kass: false,
+        }
+    }
 
-    let mut buf = [0; 1];
+    fn run(&mut self) {
+        while stdin().read(&mut self.buf).expect("could not read") == 1 {
+            self.handle_modes();
 
-    while stdin.read(&mut buf)? == 1 {
-        let character = buf[0] as char;
-
-        (mode, mode_changed) = handle_modes(&mode, character as u8);
-
-        if !mode_changed {
-            match mode {
-                Mode::Insert => handle_insert_mode(character, &mut mode_changed),
-                Mode::Command => handle_command_mode(character, &mut mode_changed),
-                Mode::Normal => {}
-                _ => {
-                    println!("\ridk what is happening")
+            if !self.mode_changed {
+                match self.current_mode {
+                    Mode::Insert => self.handle_insert_mode(),
+                    Mode::Command => self.handle_command_mode(),
+                    Mode::Normal => {}
+                    _ => println!("\ridk what is happening"),
                 }
+            }
+
+            if self.quit_kass {
+                break;
             }
         }
     }
 
-    terminal::disable_raw_mode().expect("could not disable raw mode");
-
-    Ok(())
-}
-
-// handle modes
-fn handle_modes(current_mode: &Mode, pressed_key_code: u8) -> (Mode, bool) {
-    let mut new_mode: Mode = *current_mode;
-    let mut mode_changed: bool = true;
-
-    match *current_mode {
-        Mode::Normal => {
-            match pressed_key_code {
-                // insert mode
-                105 => new_mode = Mode::Insert, // i
-                97 => new_mode = Mode::Insert,  // a
+    fn handle_modes(&mut self) {
+        match self.current_mode {
+            Mode::Normal => match self.buf[0] {
+                105 => self.current_mode = Mode::Insert, // i
+                97 => self.current_mode = Mode::Insert,  // a
 
                 // visual mode
-                118 => new_mode = Mode::Visual, // v
+                118 => self.current_mode = Mode::Visual, // v
 
                 // command mode
-                58 => new_mode = Mode::Command, // :
+                58 => self.current_mode = Mode::Command, // :
 
-                _ => {
-                    mode_changed = false;
-                }
-            }
-        }
-        _ => {
-            // go back to normal mode
-            match pressed_key_code {
-                27 => new_mode = Mode::Normal, // Esc
-                _ => {
-                    mode_changed = false;
-                }
-            }
+                _ => self.mode_changed = false,
+            },
+            _ => match self.buf[0] {
+                27 => self.current_mode = Mode::Normal, // Esc
+                _ => self.mode_changed = false,
+            },
         }
     }
 
-    (new_mode, mode_changed)
+    fn handle_insert_mode(&mut self) {
+        let character = self.buf[0] as char;
+
+        if !character.is_control() {
+            print!("{}", character);
+            stdout().flush().expect("could not flush")
+        }
+
+        self.mode_changed = false;
+    }
+
+    fn handle_command_mode(&mut self) {
+        match self.buf[0] {
+            113 => {
+                terminal::disable_raw_mode().expect("could not disable raw mode");
+                self.quit_kass = true;
+            }
+            _ => {}
+        }
+
+        self.mode_changed = false;
+    }
 }
 
-// insert mode task
-fn handle_insert_mode(character: char, mode_changed: &mut bool) {
-    if !character.is_control() {
-        print!("{}", character);
-        stdout().flush().expect("could not flush");
-    }
+fn main() -> Result<()> {
+    let mut kass = Kass::new();
+    kass.run();
 
-    *mode_changed = false;
-}
+    terminal::disable_raw_mode()?;
 
-fn handle_command_mode(character: char, mode_changed: &mut bool) {
-    match character {
-        'q' => {
-            terminal::disable_raw_mode().expect("could not disable raw mode");
-            exit(0)
-        }
-        _ => {}
-    }
-
-    *mode_changed = false;
+    Ok(())
 }

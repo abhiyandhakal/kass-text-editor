@@ -3,6 +3,7 @@ use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers},
     execute, terminal,
 };
+
 use std::io::{stdout, Result, Write};
 
 // modes
@@ -14,29 +15,44 @@ enum Mode {
     Command,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Kass {
     current_mode: Mode,
     mode_changed: bool,
 
     key_event: KeyEvent,
+    character: char,
 
     quit_kass: bool,
+
+    text: String,
+
+    terminal_width: usize,
+    terminal_height: usize,
 }
 
 impl Kass {
     // constructor
-    fn new() -> Kass {
-        // clear terminal
-        execute!(stdout(), terminal::Clear(terminal::ClearType::FromCursorUp))
-            .expect("could not clear terminal");
-        // move cursor to 0,0
-        execute!(stdout(), cursor::MoveTo(0, 0)).expect("could not move cursor to (0,0)");
+    fn new() -> Result<Kass> {
+        // clear terminal and move cursor to 0,0
+        execute!(
+            stdout(),
+            terminal::Clear(terminal::ClearType::FromCursorUp),
+            cursor::MoveTo(0, 0)
+        )?;
         // enable raw mode
-        terminal::enable_raw_mode().expect("could not enable raw mode");
-        // crossterm flags
+        terminal::enable_raw_mode()?;
 
-        Kass {
+        // get terminal size
+        let mut height: usize = 0;
+        let mut width: usize = 0;
+        if let Some((w, h)) = term_size::dimensions() {
+            height = h as usize;
+            width = w as usize
+        } else {
+            print!("Unable to get term size :(\n")
+        }
+        Ok(Kass {
             current_mode: Mode::Normal,
             mode_changed: false,
             key_event: KeyEvent {
@@ -45,23 +61,35 @@ impl Kass {
                 kind: KeyEventKind::Press,
                 state: KeyEventState::NONE,
             },
+            character: 'f',
+            text: String::new(),
             quit_kass: false,
-        }
+            terminal_height: height,
+            terminal_width: width,
+        })
     }
 
     fn run(&mut self) -> Result<()> {
         loop {
             if let Event::Key(event) = event::read()? {
+                // set key_event
                 self.key_event = event;
 
-                self.handle_modes()?;
+                // set character
+                match event.code {
+                    KeyCode::Char(c) => self.character = c,
+                    _ => {}
+                }
+
+                self.handle_modes();
 
                 if !self.mode_changed {
                     match self.current_mode {
                         Mode::Insert => self.handle_insert_mode()?,
                         Mode::Command => self.handle_command_mode()?,
-                        Mode::Normal => println!("\rnormal mode"),
-                        Mode::Visual => println!("\rvisual mode"),
+                        // Mode::Normal => println!("\rnormal mode"),
+                        // Mode::Visual => println!("\rvisual mode"),
+                        _ => {}
                     }
                 }
 
@@ -75,7 +103,7 @@ impl Kass {
         Ok(())
     }
 
-    fn handle_modes(&mut self) -> Result<()> {
+    fn handle_modes(&mut self) {
         match self.current_mode {
             Mode::Normal => match self.key_event {
                 // insert mode
@@ -112,7 +140,6 @@ impl Kass {
 
                 _ => {
                     self.mode_changed = false;
-                    println!("no key satisfies");
                 }
             },
             _ => match self.key_event {
@@ -125,12 +152,25 @@ impl Kass {
                 _ => self.mode_changed = false,
             },
         }
-        Ok(())
     }
 
     fn handle_insert_mode(&mut self) -> Result<()> {
-        print!("{:?}", self.key_event.code);
-        stdout().flush()?;
+        match self.key_event.code {
+            KeyCode::Backspace => {
+                self.text.pop();
+                self.refresh_screen()?;
+            }
+            _ => {
+                // print
+                if !self.character.is_control() {
+                    self.text.push(self.character);
+
+                    let output = write!(stdout(), "{}", self.character);
+                    stdout().flush()?;
+                    drop(output);
+                }
+            }
+        }
 
         self.mode_changed = false;
 
@@ -144,9 +184,14 @@ impl Kass {
                 modifiers: KeyModifiers::NONE,
                 ..
             } => {
-                terminal::disable_raw_mode().expect("could not disable raw mode");
+                terminal::disable_raw_mode()?;
                 self.quit_kass = true;
             }
+            KeyEvent {
+                code: KeyCode::Char('w'),
+                modifiers: KeyModifiers::NONE,
+                ..
+            } => {}
             _ => {}
         }
 
@@ -154,10 +199,23 @@ impl Kass {
 
         Ok(())
     }
+
+    fn refresh_screen(&self) -> Result<()> {
+        execute!(
+            stdout(),
+            cursor::MoveTo(0, 0),
+            terminal::Clear(terminal::ClearType::All),
+        )?;
+
+        write!(stdout(), "{}", self.text)?;
+        stdout().flush()?;
+
+        Ok(())
+    }
 }
 
 fn main() -> Result<()> {
-    let mut kass = Kass::new();
+    let mut kass = Kass::new()?;
     kass.run()?;
 
     terminal::disable_raw_mode()?;

@@ -1,5 +1,9 @@
-use crossterm::{cursor, execute, terminal};
-use std::io::{stdin, stdout, Read, Result, Write};
+use crossterm::{
+    cursor,
+    event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers},
+    execute, terminal,
+};
+use std::io::{stdout, Result, Write};
 
 // modes
 #[derive(Copy, Clone, Debug)]
@@ -15,7 +19,8 @@ struct Kass {
     current_mode: Mode,
     mode_changed: bool,
 
-    buf: [u8; 1],
+    key_event: KeyEvent,
+
     quit_kass: bool,
 }
 
@@ -29,69 +34,116 @@ impl Kass {
         execute!(stdout(), cursor::MoveTo(0, 0)).expect("could not move cursor to (0,0)");
         // enable raw mode
         terminal::enable_raw_mode().expect("could not enable raw mode");
+        // crossterm flags
 
         Kass {
             current_mode: Mode::Normal,
             mode_changed: false,
-            buf: [0],
+            key_event: KeyEvent {
+                code: KeyCode::Char('f'),
+                modifiers: KeyModifiers::NONE,
+                kind: KeyEventKind::Press,
+                state: KeyEventState::NONE,
+            },
             quit_kass: false,
         }
     }
 
-    fn run(&mut self) {
-        while stdin().read(&mut self.buf).expect("could not read") == 1 {
-            self.handle_modes();
+    fn run(&mut self) -> Result<()> {
+        loop {
+            if let Event::Key(event) = event::read()? {
+                self.key_event = event;
 
-            if !self.mode_changed {
-                match self.current_mode {
-                    Mode::Insert => self.handle_insert_mode(),
-                    Mode::Command => self.handle_command_mode(),
-                    Mode::Normal => {}
-                    _ => println!("\ridk what is happening"),
+                self.handle_modes()?;
+
+                if !self.mode_changed {
+                    match self.current_mode {
+                        Mode::Insert => self.handle_insert_mode()?,
+                        Mode::Command => self.handle_command_mode()?,
+                        Mode::Normal => println!("\rnormal mode"),
+                        Mode::Visual => println!("\rvisual mode"),
+                    }
+                }
+
+                // quit kass
+                if self.quit_kass {
+                    break;
                 }
             }
-
-            if self.quit_kass {
-                break;
-            }
         }
+
+        Ok(())
     }
 
-    fn handle_modes(&mut self) {
+    fn handle_modes(&mut self) -> Result<()> {
         match self.current_mode {
-            Mode::Normal => match self.buf[0] {
-                105 => self.current_mode = Mode::Insert, // i
-                97 => self.current_mode = Mode::Insert,  // a
+            Mode::Normal => match self.key_event {
+                // insert mode
+                KeyEvent {
+                    code: KeyCode::Char('i'),
+                    modifiers: KeyModifiers::NONE,
+                    ..
+                } => {
+                    self.current_mode = Mode::Insert;
+                    self.mode_changed = true;
+                }
+                KeyEvent {
+                    code: KeyCode::Char('a'),
+                    modifiers: KeyModifiers::NONE,
+                    ..
+                } => {
+                    self.current_mode = Mode::Insert;
+                    self.mode_changed = true;
+                }
 
                 // visual mode
-                118 => self.current_mode = Mode::Visual, // v
+                KeyEvent {
+                    code: KeyCode::Char('v'),
+                    modifiers: KeyModifiers::NONE,
+                    ..
+                } => self.current_mode = Mode::Visual,
 
                 // command mode
-                58 => self.current_mode = Mode::Command, // :
+                KeyEvent {
+                    code: KeyCode::Char(':'),
+                    modifiers: KeyModifiers::NONE,
+                    ..
+                } => self.current_mode = Mode::Command,
+
+                _ => {
+                    self.mode_changed = false;
+                    println!("no key satisfies");
+                }
+            },
+            _ => match self.key_event {
+                KeyEvent {
+                    code: KeyCode::Esc,
+                    modifiers: KeyModifiers::NONE,
+                    ..
+                } => self.current_mode = Mode::Normal,
 
                 _ => self.mode_changed = false,
             },
-            _ => match self.buf[0] {
-                27 => self.current_mode = Mode::Normal, // Esc
-                _ => self.mode_changed = false,
-            },
         }
+        Ok(())
     }
 
-    fn handle_insert_mode(&mut self) {
-        let character = self.buf[0] as char;
-
-        if !character.is_control() {
-            print!("{}", character);
-            stdout().flush().expect("could not flush")
-        }
+    fn handle_insert_mode(&mut self) -> Result<()> {
+        print!("{:?}", self.key_event.code);
+        stdout().flush()?;
 
         self.mode_changed = false;
+
+        Ok(())
     }
 
-    fn handle_command_mode(&mut self) {
-        match self.buf[0] {
-            113 => {
+    fn handle_command_mode(&mut self) -> Result<()> {
+        match self.key_event {
+            KeyEvent {
+                code: KeyCode::Char('q'),
+                modifiers: KeyModifiers::NONE,
+                ..
+            } => {
                 terminal::disable_raw_mode().expect("could not disable raw mode");
                 self.quit_kass = true;
             }
@@ -99,12 +151,14 @@ impl Kass {
         }
 
         self.mode_changed = false;
+
+        Ok(())
     }
 }
 
 fn main() -> Result<()> {
     let mut kass = Kass::new();
-    kass.run();
+    kass.run()?;
 
     terminal::disable_raw_mode()?;
 

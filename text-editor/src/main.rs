@@ -34,11 +34,14 @@ struct Kass {
 impl Kass {
     // constructor
     fn new() -> Result<Kass> {
-        // clear terminal and move cursor to 0,0
+        // clear terminal
+        // move cursor to 0,0
+        // enter alternate screen
         execute!(
             stdout(),
-            terminal::Clear(terminal::ClearType::FromCursorUp),
-            cursor::MoveTo(0, 0)
+            // terminal::Clear(terminal::ClearType::FromCursorUp),
+            cursor::MoveTo(0, 0),
+            terminal::EnterAlternateScreen
         )?;
         // enable raw mode
         terminal::enable_raw_mode()?;
@@ -230,6 +233,8 @@ fn main() -> Result<()> {
     kass.run()?;
 
     terminal::disable_raw_mode()?;
+
+    execute!(stdout(), terminal::LeaveAlternateScreen)?;
 
     Ok(())
 }

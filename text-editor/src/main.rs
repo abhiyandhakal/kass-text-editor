@@ -155,10 +155,21 @@ impl Kass {
     }
 
     fn handle_insert_mode(&mut self) -> Result<()> {
-        match self.key_event.code {
-            KeyCode::Backspace => {
+        match self.key_event {
+            KeyEvent {
+                code: KeyCode::Backspace,
+                modifiers: KeyModifiers::NONE,
+                ..
+            } => {
                 self.text.pop();
                 self.refresh_screen()?;
+            }
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => {
+                self.text.push('\n');
+                execute!(stdout(), cursor::MoveToNextLine(1))?;
             }
             _ => {
                 // print

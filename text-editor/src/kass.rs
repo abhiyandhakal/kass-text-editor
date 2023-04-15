@@ -4,7 +4,7 @@ use crossterm::{
     execute, terminal,
 };
 use std::{
-    fs::read_to_string,
+    fs::{read_to_string, File, OpenOptions},
     io::{stdout, Result, Write},
 };
 
@@ -204,15 +204,21 @@ impl Kass {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => match self.command.as_str() {
-                ":q" => self.quit_kass = true,
+            } => {
+                match self.command.as_str() {
+                    // quit
+                    ":q" => self.quit_kass = true,
 
-                _ => {
-                    self.command = String::from("");
-                    self.refresh_screen(0, 0, &self.text)?;
-                    self.current_mode = Mode::Normal;
+                    // write to file
+                    ":w" => self.write_to_file()?,
+
+                    _ => {}
                 }
-            },
+
+                self.command = String::from("");
+                self.refresh_screen(0, 0, &self.text)?;
+                self.current_mode = Mode::Normal;
+            }
 
             _ => {
                 if !self.character.is_control() {
@@ -247,6 +253,15 @@ impl Kass {
             }
         }
         stdout().flush()?;
+
+        Ok(())
+    }
+
+    // write to file
+    fn write_to_file(&self) -> Result<()> {
+        let mut file = OpenOptions::new().write(true).open(&self.filepath)?;
+
+        file.write_all(self.text.as_bytes())?;
 
         Ok(())
     }

@@ -3,7 +3,10 @@ use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers},
     execute, terminal,
 };
-use std::io::{stdout, Result, Write};
+use std::{
+    fs::read_to_string,
+    io::{stdout, Result, Write},
+};
 
 use super::mode::*;
 use super::statusbar::*;
@@ -30,6 +33,8 @@ pub struct Kass {
 impl Kass {
     // constructor
     pub fn new(height: usize, width: usize, filepath: &String) -> Result<Kass> {
+        let text: String = read_to_string(filepath)?;
+
         Ok(Kass {
             current_mode: Mode::Normal,
             mode_changed: false,
@@ -40,7 +45,7 @@ impl Kass {
                 state: KeyEventState::NONE,
             },
             character: 'f',
-            text: String::new(),
+            text,
             command: String::from(""),
             quit_kass: false,
             filepath: String::from(filepath),
@@ -50,6 +55,7 @@ impl Kass {
     }
 
     pub fn run(&mut self) -> Result<()> {
+        self.refresh_screen(0, 0, &self.text)?;
         loop {
             if let Event::Key(event) = event::read()? {
                 // set key_event
@@ -61,7 +67,7 @@ impl Kass {
                     _ => {}
                 }
 
-                self.handle_modes();
+                self.handle_modes()?;
 
                 if !self.mode_changed {
                     match self.current_mode {
@@ -230,7 +236,16 @@ impl Kass {
             terminal::Clear(terminal::ClearType::All),
         )?;
 
-        write!(stdout(), "{}", text)?;
+        // write!(stdout(), "{}", text)?;
+        for ch in text.as_bytes().iter() {
+            let character = *ch as char;
+
+            if character == '\n' {
+                write!(stdout(), "\r\n")?
+            } else {
+                write!(stdout(), "{}", character)?
+            }
+        }
         stdout().flush()?;
 
         Ok(())

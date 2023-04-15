@@ -4,8 +4,9 @@ use crossterm::{
     execute, terminal,
 };
 use std::{
-    fs::{read_to_string, File, OpenOptions},
+    fs::{read_to_string, OpenOptions},
     io::{stdout, Result, Write},
+    path::Path,
 };
 
 use super::mode::*;
@@ -26,6 +27,8 @@ pub struct Kass {
 
     filepath: String,
 
+    statusbar: Statusbar,
+
     terminal_width: usize,
     terminal_height: usize,
 }
@@ -33,7 +36,13 @@ pub struct Kass {
 impl Kass {
     // constructor
     pub fn new(height: usize, width: usize, filepath: &String) -> Result<Kass> {
-        let text: String = read_to_string(filepath)?;
+        let mut text = String::new();
+
+        if Path::new(&filepath).exists() {
+            text = read_to_string(filepath)?;
+        }
+
+        let statusbar = Statusbar::new(String::from("Normal"), height, width)?;
 
         Ok(Kass {
             current_mode: Mode::Normal,
@@ -46,6 +55,7 @@ impl Kass {
             },
             character: 'f',
             text,
+            statusbar,
             command: String::from(""),
             quit_kass: false,
             filepath: String::from(filepath),
@@ -55,7 +65,9 @@ impl Kass {
     }
 
     pub fn run(&mut self) -> Result<()> {
+        self.statusbar.paint()?;
         self.refresh_screen(0, 0, &self.text)?;
+
         loop {
             if let Event::Key(event) = event::read()? {
                 // set key_event
@@ -212,6 +224,12 @@ impl Kass {
                     // write to file
                     ":w" => self.write_to_file()?,
 
+                    // write and quit
+                    ":wq" => {
+                        self.write_to_file()?;
+                        self.quit_kass = true;
+                    }
+
                     _ => {}
                 }
 
@@ -236,6 +254,7 @@ impl Kass {
     }
 
     fn refresh_screen(&self, width: usize, height: usize, text: &String) -> Result<()> {
+        self.statusbar.paint()?;
         execute!(
             stdout(),
             cursor::MoveTo(width as u16, height as u16),

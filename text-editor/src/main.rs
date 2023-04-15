@@ -31,7 +31,7 @@ fn main() -> Result<()> {
 
     // get file path
     let args: Vec<String> = args().collect();
-    let mut filepath: &String = &String::from("nada");
+    let mut filepath: &String = &String::from("n/a");
 
     if args.len() > 1 {
         filepath = &args[1];

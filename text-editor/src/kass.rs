@@ -3,10 +3,7 @@ use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers},
     execute, terminal,
 };
-use std::{
-    io::{stdout, Result, Write},
-    string,
-};
+use std::io::{stdout, Result, Write};
 
 use super::mode::*;
 use super::statusbar::*;
@@ -22,6 +19,7 @@ pub struct Kass {
     quit_kass: bool,
 
     text: String,
+    command: String,
 
     filepath: String,
 
@@ -43,6 +41,7 @@ impl Kass {
             },
             character: 'f',
             text: String::new(),
+            command: String::from(""),
             quit_kass: false,
             filepath: String::from(filepath),
             terminal_height: height,
@@ -68,8 +67,6 @@ impl Kass {
                     match self.current_mode {
                         Mode::Insert => self.handle_insert_mode()?,
                         Mode::Command => self.handle_command_mode()?,
-                        // Mode::Normal => println!("\rnormal mode"),
-                        // Mode::Visual => println!("\rvisual mode"),
                         _ => {}
                     }
                 }
@@ -84,7 +81,7 @@ impl Kass {
         Ok(())
     }
 
-    fn handle_modes(&mut self) {
+    fn handle_modes(&mut self) -> Result<()> {
         match self.current_mode {
             Mode::Normal => match self.key_event {
                 // insert mode
@@ -118,21 +115,31 @@ impl Kass {
                     modifiers: KeyModifiers::NONE,
                     ..
                 } => self.current_mode = Mode::Command,
-
                 _ => {
                     self.mode_changed = false;
                 }
             },
+
+            Mode::Command => match self.key_event {
+                KeyEvent {
+                    code: KeyCode::Esc, ..
+                } => {
+                    self.command = String::from("");
+                    self.refresh_screen(0, 0, &self.text)?;
+                    self.current_mode = Mode::Normal;
+                }
+                _ => self.mode_changed = false,
+            },
+
             _ => match self.key_event {
                 KeyEvent {
-                    code: KeyCode::Esc,
-                    modifiers: KeyModifiers::NONE,
-                    ..
+                    code: KeyCode::Esc, ..
                 } => self.current_mode = Mode::Normal,
-
                 _ => self.mode_changed = false,
             },
         }
+
+        Ok(())
     }
 
     fn handle_insert_mode(&mut self) -> Result<()> {
@@ -143,7 +150,7 @@ impl Kass {
                 ..
             } => {
                 self.text.pop();
-                self.refresh_screen()?;
+                self.refresh_screen(0, 0, &self.text)?;
             }
             KeyEvent {
                 code: KeyCode::Enter,
@@ -170,21 +177,45 @@ impl Kass {
     }
 
     fn handle_command_mode(&mut self) -> Result<()> {
+        let position_x = 0;
+        let position_y = self.terminal_height - 1;
+
+        execute!(
+            stdout(),
+            cursor::MoveTo(position_x as u16, position_y as u16)
+        )?;
+
         match self.key_event {
             KeyEvent {
-                code: KeyCode::Char('q'),
+                code: KeyCode::Backspace,
                 modifiers: KeyModifiers::NONE,
                 ..
             } => {
-                terminal::disable_raw_mode()?;
-                self.quit_kass = true;
+                self.command.pop();
+                self.refresh_screen(position_x, position_y, &self.command)?;
             }
+
             KeyEvent {
-                code: KeyCode::Char('w'),
-                modifiers: KeyModifiers::NONE,
+                code: KeyCode::Enter,
                 ..
-            } => {}
-            _ => {}
+            } => match self.command.as_str() {
+                ":q" => self.quit_kass = true,
+
+                _ => {
+                    self.command = String::from("");
+                    self.refresh_screen(0, 0, &self.text)?;
+                    self.current_mode = Mode::Normal;
+                }
+            },
+
+            _ => {
+                if !self.character.is_control() {
+                    self.command.push(self.character);
+
+                    write!(stdout(), "{}", self.command)?;
+                    stdout().flush()?;
+                }
+            }
         }
 
         self.mode_changed = false;
@@ -192,14 +223,14 @@ impl Kass {
         Ok(())
     }
 
-    fn refresh_screen(&self) -> Result<()> {
+    fn refresh_screen(&self, width: usize, height: usize, text: &String) -> Result<()> {
         execute!(
             stdout(),
-            cursor::MoveTo(0, 0),
+            cursor::MoveTo(width as u16, height as u16),
             terminal::Clear(terminal::ClearType::All),
         )?;
 
-        write!(stdout(), "{}", self.text)?;
+        write!(stdout(), "{}", text)?;
         stdout().flush()?;
 
         Ok(())

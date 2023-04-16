@@ -278,7 +278,10 @@ impl Kass {
 
     // write to file
     fn write_to_file(&self) -> Result<()> {
-        let mut file = OpenOptions::new().write(true).open(&self.filepath)?;
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&self.filepath)?;
 
         file.write_all(self.text.as_bytes())?;
 

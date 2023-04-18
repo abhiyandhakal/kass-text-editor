@@ -1,7 +1,9 @@
 use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers},
-    execute, terminal,
+    execute,
+    style::{Attribute, Print, SetAttribute},
+    terminal, QueueableCommand,
 };
 use std::{
     fs::{read_to_string, OpenOptions},
@@ -28,6 +30,12 @@ pub struct Kass {
     filepath: String,
 
     statusbar: Statusbar,
+
+    position_x: usize,
+    position_y: usize,
+    positionX: usize,
+
+    number_display: bool,
 
     terminal_width: usize,
     terminal_height: usize,
@@ -59,6 +67,10 @@ impl Kass {
             command: String::from(""),
             quit_kass: false,
             filepath: String::from(filepath),
+            position_x: 0,
+            positionX: 3,
+            position_y: 0,
+            number_display: false,
             terminal_height: height,
             terminal_width: width,
         })
@@ -66,7 +78,11 @@ impl Kass {
 
     pub fn run(&mut self) -> Result<()> {
         self.statusbar.paint()?;
-        self.refresh_screen(0, 0, &self.text)?;
+        if self.number_display {
+            self.refresh_screen(5, 0, &self.text)?;
+        } else {
+            self.refresh_screen(0, 0, &self.text)?;
+        }
 
         loop {
             if let Event::Key(event) = event::read()? {
@@ -168,14 +184,20 @@ impl Kass {
                 ..
             } => {
                 self.text.pop();
-                self.refresh_screen(0, 0, &self.text)?;
+
+                self.refresh_screen(self.position_x, self.position_y, &self.text)?;
             }
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
             } => {
                 self.text.push('\n');
-                execute!(stdout(), cursor::MoveToNextLine(1))?;
+
+                self.position_y += 1;
+                execute!(
+                    stdout(),
+                    cursor::MoveTo(self.position_x as u16, self.position_y as u16)
+                )?;
             }
             _ => {
                 // print
@@ -229,6 +251,10 @@ impl Kass {
                         self.write_to_file()?;
                         self.quit_kass = true;
                     }
+                    ":set nu" => {
+                        self.number_display = true;
+                        self.position_x = 4;
+                    }
 
                     _ => {}
                 }
@@ -261,18 +287,34 @@ impl Kass {
             terminal::Clear(terminal::ClearType::All),
         )?;
 
-        // write!(stdout(), "{}", text)?;
         for ch in text.as_bytes().iter() {
             let character = *ch as char;
 
             if character == '\n' {
-                write!(stdout(), "\r\n")?
+                write!(stdout(), "{}", "\r\n")?;
+                stdout().flush()?;
             } else {
                 write!(stdout(), "{}", character)?
             }
         }
+        if self.number_display {
+            self.line_number_display()?;
+        }
         stdout().flush()?;
 
+        Ok(())
+    }
+
+    fn line_number_display(&self) -> Result<()> {
+        for i in 0..self.terminal_height {
+            stdout()
+                .queue(SetAttribute(Attribute::Reset))?
+                .queue(cursor::MoveTo(0, i as u16))?
+                .queue(Print(format!("{:3} ", i + 1)))?;
+        }
+
+        execute!(stdout(), cursor::MoveTo(self.position_x as u16, 0))?;
+        stdout().flush()?;
         Ok(())
     }
 

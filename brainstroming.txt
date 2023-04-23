@@ -1,10 +1,5 @@
 text editor
 
-terminal emulator
-	app -- flutter (xterm.dart)
-	desktop application -- gtk (js(less priority), python, rust)
-	web -- depends (wasm (rust), js(vanilla or react)
-
 Features
 	terminal based
 	gui platform
@@ -19,10 +14,17 @@ Features
 	font
 	tabsize
 
-git repo tree
-	kass
-		text-editor d--
-		flutter-app d--
-		gtk-app d--
-		README.md ---
-		web d--
+screens
+	text editor
+	file tree
+	command section
+
+text editor:
+	further into:
+		text editor
+		statusbar
+
+file tree
+	further into:
+		tree
+		statusbar

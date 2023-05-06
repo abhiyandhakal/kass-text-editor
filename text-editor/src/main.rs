@@ -1,37 +1,33 @@
-use crossterm::{cursor, execute, terminal};
 use std::io::{stdout, Result};
 
+use crossterm::{
+    event::{DisableMouseCapture, EnableMouseCapture},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+
+use kass::Kass;
+use tui::{backend::CrosstermBackend, Terminal};
+
+mod editor;
 mod enums;
-mod filetree;
 mod kass;
-mod statusbar;
-mod window;
 
 fn main() -> Result<()> {
-    // move cursor to 0,0
-    // enter alternate screen
+    enable_raw_mode()?;
+    execute!(stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+    let backend = CrosstermBackend::new(stdout());
+    let mut terminal = Terminal::new(backend)?;
+    let mut kass_editor = Kass::new()?;
+    kass_editor.run(&mut terminal)?;
 
+    disable_raw_mode()?;
     execute!(
-        stdout(),
-        cursor::SavePosition,
-        terminal::EnterAlternateScreen,
-        cursor::MoveTo(0, 0)
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
     )?;
-    // enable raw mode
-    terminal::enable_raw_mode()?;
-
-    // text editor
-    let mut kass = kass::Kass::new()?;
-    kass.run()?;
-
-    // disable raw mode
-    terminal::disable_raw_mode()?;
-    // leave alternate screen
-    execute!(
-        stdout(),
-        cursor::RestorePosition,
-        terminal::LeaveAlternateScreen
-    )?;
+    terminal.show_cursor()?;
 
     Ok(())
 }

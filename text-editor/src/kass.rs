@@ -1,36 +1,57 @@
 use std::{
-    io::{stdout, Result},
+    env::current_dir,
+    io::{stdout, BufRead, Result},
     vec,
 };
 
 use crossterm::{
     cursor::SetCursorStyle,
-    event::{self, Event, KeyCode},
+    event::{self, Event, KeyCode, KeyEvent},
     execute,
 };
 use tui::{
     backend::Backend,
     layout::{Constraint, Layout},
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::{Span, Spans, Text},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Paragraph, Tabs},
     Frame, Terminal,
 };
 
-use crate::enums::*;
+use crate::{editor::Editor, enums::*};
 
 struct App {
     mode: Mode,
+    tabs: Vec<Editor>,
     command: String,
     rows: Vec<String>,
+    clipboard: Vec<String>,
+    active_index: usize,
 }
 
 impl App {
-    fn new() -> App {
-        App {
+    fn new() -> Result<App> {
+        Ok(App {
             mode: Mode::Normal,
             command: String::new(),
-            rows: vec![],
+            tabs: vec![Editor::new(format!(
+                "{}/src/main.rs",
+                current_dir()?.into_os_string().into_string().unwrap(),
+            ))],
+            rows: vec![String::new()],
+            clipboard: vec![],
+            active_index: 0,
+        })
+    }
+    pub fn next(&mut self) {
+        self.active_index = (self.active_index + 1) % self.tabs.len();
+    }
+
+    pub fn previous(&mut self) {
+        if self.active_index > 0 {
+            self.active_index -= 1;
+        } else {
+            self.active_index = self.tabs.len() - 1;
         }
     }
 }
@@ -41,7 +62,7 @@ pub struct Kass {
 
 impl Kass {
     pub fn new() -> Result<Kass> {
-        let app = App::new();
+        let app = App::new()?;
         Ok(Kass { app })
     }
 
@@ -51,8 +72,11 @@ impl Kass {
 
             if let Event::Key(key) = event::read()? {
                 match self.app.mode {
-                    Mode::Normal => match key.code {
-                        event::KeyCode::Char(c) => match c {
+                    Mode::Normal => match key {
+                        KeyEvent {
+                            code: event::KeyCode::Char(c),
+                            ..
+                        } => match c {
                             'i' => self.app.mode = Mode::Insert,
                             ':' => {
                                 self.app.mode = Mode::Command;
@@ -60,6 +84,14 @@ impl Kass {
                             }
                             _ => {}
                         },
+                        KeyEvent {
+                            code: event::KeyCode::Tab,
+                            ..
+                        } => self.app.next(),
+                        KeyEvent {
+                            code: event::KeyCode::BackTab,
+                            ..
+                        } => self.app.previous(),
                         _ => {}
                     },
                     Mode::Command => match key.code {
@@ -70,13 +102,21 @@ impl Kass {
                             self.app.mode = Mode::Normal;
                             self.app.command = String::new();
                         }
-                        KeyCode::Enter => match self.app.command.as_str() {
-                            ":q" => return Ok(()),
-                            _ => {
-                                self.app.mode = Mode::Normal;
-                                self.app.command = String::new();
-                            }
-                        },
+                        KeyCode::Enter => {
+                            match self.app.command.as_str() {
+                                ":q" => return Ok(()),
+                                ":tabnew" => {
+                                    self.app.tabs.push(Editor::new(String::from("src/main.rs")))
+                                }
+                                _ => {
+                                    self.app.mode = Mode::Normal;
+                                    self.app.command = String::new();
+                                }
+                            };
+
+                            self.app.mode = Mode::Normal;
+                            self.app.command = String::new();
+                        }
                         KeyCode::Backspace => {
                             if self.app.command.len() != 0 {
                                 self.app.command.pop();
@@ -106,9 +146,9 @@ impl Kass {
                         event::KeyCode::Enter => {
                             self.app.rows.push(String::new());
                         }
-                        KeyCode::Tab => {
-                            self.app.rows.remove(5);
-                        }
+                        // KeyCode::Tab => {
+                        //     self.app.rows.remove(5);
+                        // }
                         event::KeyCode::Esc => self.app.mode = Mode::Normal,
                         _ => {}
                     },
@@ -121,6 +161,7 @@ impl Kass {
         let chunks = Layout::default()
             .constraints(
                 [
+                    Constraint::Length(3),
                     Constraint::Min(1),
                     Constraint::Length(1),
                     Constraint::Length(1),
@@ -135,35 +176,32 @@ impl Kass {
                 Style::default().fg(Color::Yellow),
             ),
             Mode::Insert => (vec![Span::raw("Insert")], Style::default()),
-            Mode::Command => (
-                vec![Span::raw("Command")],
-                Style::default().bg(Color::LightYellow).fg(Color::Black),
-            ),
+            Mode::Command => (vec![Span::raw("Command")], Style::default()),
         };
 
         let mut mode_text = Text::from(Spans::from(mode_span));
         mode_text.patch_style(style);
 
         let mode_paragraph = Paragraph::new(mode_text).style(Style::default().bg(Color::DarkGray));
-        frame.render_widget(mode_paragraph, chunks[1]);
+        frame.render_widget(mode_paragraph, chunks[2]);
 
         let command_paragraph = Paragraph::new(Text::from(Spans::from(self.app.command.clone())));
-        frame.render_widget(command_paragraph, chunks[2]);
+        frame.render_widget(command_paragraph, chunks[3]);
 
-        let rows: Vec<ListItem> = self
+        let tab_titles = self
             .app
-            .rows
+            .tabs
             .iter()
-            .enumerate()
-            .map(|(i, m)| {
-                let content = vec![Spans::from(Span::raw(format!("{:<4}{}", i, m)))];
-                ListItem::new(content)
-            })
+            .map(|_tab| Spans::from(vec![Span::styled("abc", style)]))
             .collect();
 
-        let rows = List::new(rows).block(Block::default().borders(Borders::ALL));
+        let tabs = Tabs::new(tab_titles)
+            .block(Block::default().borders(Borders::ALL).title("Tabs"))
+            .select(self.app.active_index)
+            .style(Style::default().fg(Color::Cyan))
+            .highlight_style(Style::default().add_modifier(Modifier::BOLD).bg(Color::Red));
 
-        frame.render_widget(rows, chunks[0]);
+        frame.render_widget(tabs, chunks[0]);
 
         match self.app.mode {
             Mode::Command => {
@@ -172,8 +210,8 @@ impl Kass {
             _ => {
                 if let Some(last) = self.app.rows.last_mut() {
                     frame.set_cursor(
-                        chunks[0].x + last.len() as u16 + 1 + 4,
-                        chunks[0].y + self.app.rows.len() as u16,
+                        chunks[1].x + last.len() as u16 + 1,
+                        chunks[1].y + self.app.rows.len() as u16,
                     )
                 }
             }

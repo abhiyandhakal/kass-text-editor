@@ -4,7 +4,7 @@ use crate::enums::Mode;
 
 #[derive(Debug, Clone)]
 pub struct Editor {
-    rows: Vec<String>,
+    pub rows: Vec<String>,
     filepath: String,
     key_event: KeyEvent,
 }

@@ -1,6 +1,6 @@
 use std::{
     env::current_dir,
-    io::{stdout, BufRead, Result},
+    io::{stdout, Result},
     vec,
 };
 
@@ -14,7 +14,7 @@ use tui::{
     layout::{Constraint, Layout},
     style::{Color, Modifier, Style},
     text::{Span, Spans, Text},
-    widgets::{Block, Borders, Paragraph, Tabs},
+    widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
     Frame, Terminal,
 };
 
@@ -24,7 +24,6 @@ struct App {
     mode: Mode,
     tabs: Vec<Editor>,
     command: String,
-    rows: Vec<String>,
     clipboard: Vec<String>,
     active_index: usize,
 }
@@ -38,7 +37,6 @@ impl App {
                 "{}/src/main.rs",
                 current_dir()?.into_os_string().into_string().unwrap(),
             ))],
-            rows: vec![String::new()],
             clipboard: vec![],
             active_index: 0,
         })
@@ -126,29 +124,30 @@ impl Kass {
                     },
                     Mode::Insert => match key.code {
                         event::KeyCode::Char(c) => {
-                            if let Some(last) = self.app.rows.last_mut() {
+                            if let Some(last) = self.app.tabs[self.app.active_index].rows.last_mut()
+                            {
                                 last.push(c)
                             } else {
-                                self.app.rows.push(format!("{}", c));
+                                self.app.tabs[self.app.active_index]
+                                    .rows
+                                    .push(format!("{}", c));
                             }
                         }
                         event::KeyCode::Backspace => {
-                            if let Some(last) = self.app.rows.last_mut() {
+                            if let Some(last) = self.app.tabs[self.app.active_index].rows.last_mut()
+                            {
                                 if last.len() != 0 {
                                     last.pop();
                                 } else {
-                                    if self.app.rows.len() != 1 {
-                                        self.app.rows.pop();
+                                    if self.app.tabs[self.app.active_index].rows.len() != 1 {
+                                        self.app.tabs[self.app.active_index].rows.pop();
                                     }
                                 }
                             }
                         }
-                        event::KeyCode::Enter => {
-                            self.app.rows.push(String::new());
-                        }
-                        // KeyCode::Tab => {
-                        //     self.app.rows.remove(5);
-                        // }
+                        event::KeyCode::Enter => self.app.tabs[self.app.active_index]
+                            .rows
+                            .push(String::new()),
                         event::KeyCode::Esc => self.app.mode = Mode::Normal,
                         _ => {}
                     },
@@ -203,15 +202,30 @@ impl Kass {
 
         frame.render_widget(tabs, chunks[0]);
 
+        let rows: Vec<ListItem> = self.app.tabs[self.app.active_index]
+            .rows
+            .iter()
+            .enumerate()
+            .map(|(_i, m)| {
+                let content = vec![Spans::from(Span::raw(format!("{}", m)))];
+                ListItem::new(content)
+            })
+            .collect();
+
+        let rows = List::new(rows).block(Block::default().borders(Borders::ALL));
+
+        frame.render_widget(rows, chunks[1]);
+
         match self.app.mode {
             Mode::Command => {
                 frame.set_cursor(chunks[2].x + self.app.command.len() as u16, chunks[2].y + 1)
             }
+
             _ => {
-                if let Some(last) = self.app.rows.last_mut() {
+                if let Some(last) = self.app.tabs[self.app.active_index].rows.last_mut() {
                     frame.set_cursor(
                         chunks[1].x + last.len() as u16 + 1,
-                        chunks[1].y + self.app.rows.len() as u16,
+                        chunks[1].y + self.app.tabs[self.app.active_index].rows.len() as u16,
                     )
                 }
             }
@@ -221,6 +235,7 @@ impl Kass {
             Mode::Insert => {
                 execute!(stdout(), SetCursorStyle::BlinkingBar).expect("Couldn't enable blinking")
             }
+
             _ => {
                 execute!(stdout(), SetCursorStyle::SteadyBlock).expect("Couldn't disable blinking")
             }

@@ -1,3 +1,5 @@
+use std::io::Result;
+
 use crate::position::Position;
 
 #[derive(Debug, Clone)]
@@ -67,5 +69,27 @@ impl Editor {
         }
 
         self.cursor.set_pos(pos_x, pos_y);
+    }
+
+    pub fn insert_row(&mut self, idx: usize, row_content: String) {
+        if idx > self.rows.len() {
+            return;
+        }
+        self.rows.insert(idx, row_content);
+    }
+
+    pub fn goto_newline(&mut self) -> Result<()> {
+        let row_idx = self.cursor.y as usize;
+        if self.cursor.x == 0 {
+            self.insert_row(row_idx, String::from(""));
+        } else {
+            let content = self.rows[self.cursor.y as usize].split_off(self.cursor.x as usize);
+            self.insert_row(row_idx + 1, content);
+        };
+
+        self.cursor.x = 0;
+
+        self.cursor.y += 1;
+        Ok(())
     }
 }

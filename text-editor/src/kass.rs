@@ -141,7 +141,7 @@ impl Kass {
                     .rows
                     .push(String::new());
 
-                self.app.tabs[self.app.active_index].move_down(1);
+                self.app.tabs[self.app.active_index].goto_newline()?;
             }
             event::KeyCode::Esc => {
                 self.app.mode = Mode::Normal;

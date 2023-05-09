@@ -12,6 +12,7 @@ use tui::{backend::CrosstermBackend, Terminal};
 mod editor;
 mod enums;
 mod kass;
+mod position;
 
 fn main() -> Result<()> {
     enable_raw_mode()?;

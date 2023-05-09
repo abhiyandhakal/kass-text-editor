@@ -1,12 +1,11 @@
 use std::{
-    env::current_dir,
     io::{stdout, Result},
     vec,
 };
 
 use crossterm::{
     cursor::SetCursorStyle,
-    event::{self, Event, KeyCode, KeyEvent},
+    event::{self, Event, KeyCode, KeyEvent, KeyEventState, KeyModifiers},
     execute,
 };
 use tui::{
@@ -18,7 +17,7 @@ use tui::{
     Frame, Terminal,
 };
 
-use crate::{editor::Editor, enums::*};
+use crate::{editor::Editor, enums::*, position::Position};
 
 struct App {
     mode: Mode,
@@ -33,10 +32,7 @@ impl App {
         Ok(App {
             mode: Mode::Normal,
             command: String::new(),
-            tabs: vec![Editor::new(format!(
-                "{}/src/main.rs",
-                current_dir()?.into_os_string().into_string().unwrap(),
-            ))],
+            tabs: vec![Editor::new()],
             clipboard: vec![],
             active_index: 0,
         })
@@ -56,12 +52,98 @@ impl App {
 
 pub struct Kass {
     app: App,
+    key_event: KeyEvent,
+    cursor: Position,
 }
 
 impl Kass {
     pub fn new() -> Result<Kass> {
         let app = App::new()?;
-        Ok(Kass { app })
+        Ok(Kass {
+            app,
+            key_event: KeyEvent {
+                code: crossterm::event::KeyCode::Esc,
+                modifiers: KeyModifiers::NONE,
+                kind: crossterm::event::KeyEventKind::Press,
+                state: KeyEventState::NONE,
+            },
+            cursor: Position::new(),
+        })
+    }
+
+    fn handle_normal_mode(&mut self) -> Result<()> {
+        match self.key_event {
+            KeyEvent {
+                code: event::KeyCode::Char(c),
+                ..
+            } => match c {
+                'i' => {
+                    self.app.tabs[self.app.active_index].move_left(1);
+                    self.app.mode = Mode::Insert;
+                }
+                'a' => {
+                    self.app.mode = Mode::Insert;
+                }
+                ':' => {
+                    self.app.mode = Mode::Command;
+                    self.app.command.push(':');
+                }
+                'l' => self.app.tabs[self.app.active_index].move_right(1),
+                'h' => self.app.tabs[self.app.active_index].move_left(1),
+                _ => {}
+            },
+            KeyEvent {
+                code: event::KeyCode::Tab,
+                ..
+            } => self.app.next(),
+            KeyEvent {
+                code: event::KeyCode::BackTab,
+                ..
+            } => self.app.previous(),
+            _ => {}
+        }
+
+        Ok(())
+    }
+
+    fn handle_insert_mode(&mut self) -> Result<()> {
+        match self.key_event.code {
+            event::KeyCode::Char(c) => {
+                if self.cursor.x as usize
+                    == self.app.tabs[self.app.active_index].rows[self.cursor.y as usize].len()
+                    || self.app.tabs[self.app.active_index].rows[self.cursor.y as usize].len() == 0
+                {
+                    self.app.tabs[self.app.active_index].rows[self.cursor.y as usize].push(c);
+                } else {
+                    self.app.tabs[self.app.active_index].rows[self.cursor.y as usize]
+                        .insert(self.cursor.x as usize, c);
+                }
+
+                self.app.tabs[self.app.active_index].move_right(1);
+            }
+            event::KeyCode::Backspace => {
+                if let Some(last) = self.app.tabs[self.app.active_index].rows.last_mut() {
+                    if last.len() != 0 {
+                        last.pop();
+                    } else {
+                        if self.app.tabs[self.app.active_index].rows.len() != 1 {
+                            self.app.tabs[self.app.active_index].rows.pop();
+                        }
+                    }
+                }
+            }
+            event::KeyCode::Enter => {
+                self.app.tabs[self.app.active_index]
+                    .rows
+                    .push(String::new());
+            }
+            event::KeyCode::Esc => {
+                self.app.mode = Mode::Normal;
+            }
+            _ => {}
+        }
+
+        Ok(())
     }
 
     pub fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
@@ -69,29 +151,10 @@ impl Kass {
             terminal.draw(|f| self.ui(f))?;
 
             if let Event::Key(key) = event::read()? {
+                self.key_event = key;
+
                 match self.app.mode {
-                    Mode::Normal => match key {
-                        KeyEvent {
-                            code: event::KeyCode::Char(c),
-                            ..
-                        } => match c {
-                            'i' => self.app.mode = Mode::Insert,
-                            ':' => {
-                                self.app.mode = Mode::Command;
-                                self.app.command.push(':');
-                            }
-                            _ => {}
-                        },
-                        KeyEvent {
-                            code: event::KeyCode::Tab,
-                            ..
-                        } => self.app.next(),
-                        KeyEvent {
-                            code: event::KeyCode::BackTab,
-                            ..
-                        } => self.app.previous(),
-                        _ => {}
-                    },
+                    Mode::Normal => self.handle_normal_mode()?,
                     Mode::Command => match key.code {
                         event::KeyCode::Char(ch) => match ch {
                             _ => self.app.command.push(ch),
@@ -104,7 +167,8 @@ impl Kass {
                             match self.app.command.as_str() {
                                 ":q" => return Ok(()),
                                 ":tabnew" => {
-                                    self.app.tabs.push(Editor::new(String::from("src/main.rs")))
+                                    self.app.tabs.push(Editor::new());
+                                    self.app.active_index = self.app.tabs.len() - 1;
                                 }
                                 _ => {
                                     self.app.mode = Mode::Normal;
@@ -122,35 +186,7 @@ impl Kass {
                         }
                         _ => {}
                     },
-                    Mode::Insert => match key.code {
-                        event::KeyCode::Char(c) => {
-                            if let Some(last) = self.app.tabs[self.app.active_index].rows.last_mut()
-                            {
-                                last.push(c)
-                            } else {
-                                self.app.tabs[self.app.active_index]
-                                    .rows
-                                    .push(format!("{}", c));
-                            }
-                        }
-                        event::KeyCode::Backspace => {
-                            if let Some(last) = self.app.tabs[self.app.active_index].rows.last_mut()
-                            {
-                                if last.len() != 0 {
-                                    last.pop();
-                                } else {
-                                    if self.app.tabs[self.app.active_index].rows.len() != 1 {
-                                        self.app.tabs[self.app.active_index].rows.pop();
-                                    }
-                                }
-                            }
-                        }
-                        event::KeyCode::Enter => self.app.tabs[self.app.active_index]
-                            .rows
-                            .push(String::new()),
-                        event::KeyCode::Esc => self.app.mode = Mode::Normal,
-                        _ => {}
-                    },
+                    Mode::Insert => self.handle_insert_mode()?,
                 }
             }
         }
@@ -214,31 +250,41 @@ impl Kass {
 
         let rows = List::new(rows).block(Block::default().borders(Borders::ALL));
 
+        self.cursor.set_pos(
+            self.app.tabs[self.app.active_index].cursor.x,
+            self.app.tabs[self.app.active_index].cursor.y,
+        );
+
         frame.render_widget(rows, chunks[1]);
+
+        // cursor stuff
+        match self.app.mode {
+            Mode::Insert => {
+                execute!(stdout(), SetCursorStyle::BlinkingBar).expect("Couldn't enable blinking")
+            }
+            _ => {
+                execute!(stdout(), SetCursorStyle::SteadyBlock).expect("Couldn't disable blinking")
+            }
+        }
 
         match self.app.mode {
             Mode::Command => {
                 frame.set_cursor(chunks[2].x + self.app.command.len() as u16, chunks[2].y + 1)
             }
 
-            _ => {
-                if let Some(last) = self.app.tabs[self.app.active_index].rows.last_mut() {
-                    frame.set_cursor(
-                        chunks[1].x + last.len() as u16 + 1,
-                        chunks[1].y + self.app.tabs[self.app.active_index].rows.len() as u16,
-                    )
-                }
-            }
-        }
+            Mode::Normal => frame.set_cursor(
+                if self.cursor.x == 0 {
+                    chunks[1].x + 1
+                } else {
+                    chunks[1].x + self.cursor.x
+                },
+                chunks[1].y + self.cursor.y + 1,
+            ),
 
-        match self.app.mode {
-            Mode::Insert => {
-                execute!(stdout(), SetCursorStyle::BlinkingBar).expect("Couldn't enable blinking")
-            }
-
-            _ => {
-                execute!(stdout(), SetCursorStyle::SteadyBlock).expect("Couldn't disable blinking")
-            }
+            _ => frame.set_cursor(
+                chunks[1].x + self.cursor.x + 1,
+                chunks[1].y + self.cursor.y + 1,
+            ),
         }
     }
 }

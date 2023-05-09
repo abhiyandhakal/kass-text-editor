@@ -88,8 +88,10 @@ impl Kass {
                     self.app.mode = Mode::Command;
                     self.app.command.push(':');
                 }
+                // navigation
                 'l' => self.app.tabs[self.app.active_index].move_right(1),
                 'h' => self.app.tabs[self.app.active_index].move_left(1),
+                'j' => self.app.tabs[self.app.active_index].move_down(1),
                 _ => {}
             },
             KeyEvent {
@@ -136,6 +138,8 @@ impl Kass {
                 self.app.tabs[self.app.active_index]
                     .rows
                     .push(String::new());
+
+                self.app.tabs[self.app.active_index].move_down(1);
             }
             event::KeyCode::Esc => {
                 self.app.mode = Mode::Normal;

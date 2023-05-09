@@ -1,4 +1,4 @@
-use crate::{enums::Mode, position::Position};
+use crate::position::Position;
 
 #[derive(Debug, Clone)]
 pub struct Editor {
@@ -21,7 +21,7 @@ impl Editor {
 
         let mut pos_x = self.cursor.x + steps;
 
-        if pos_x as usize > self.rows[current_row as usize].len() - 1 {
+        if pos_x as usize >= self.rows[current_row as usize].len() {
             pos_x = self.rows[current_row as usize].len() as u16;
         }
 
@@ -42,10 +42,16 @@ impl Editor {
 
     pub fn move_down(&mut self, steps: u16) {
         let mut pos_x = self.cursor.x;
-        let mut pos_y = self.cursor.y;
+        let mut pos_y = self.cursor.y + steps;
 
-        // if pos_x =  {
-        //
-        // }
+        if pos_y >= self.rows.len() as u16 {
+            pos_y = self.rows.len() as u16 - 1;
+        }
+
+        if pos_x >= self.rows[pos_y as usize].len() as u16 {
+            pos_x = self.rows[pos_y as usize].len() as u16;
+        }
+
+        self.cursor.set_pos(pos_x, pos_y);
     }
 }

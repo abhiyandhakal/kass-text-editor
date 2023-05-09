@@ -44,14 +44,20 @@ impl Editor {
 
     pub fn move_down(&mut self, steps: u16) {
         let mut pos_x = self.cursor.x;
-        let mut pos_y = self.cursor.y + steps;
+        let pos_y = if self.cursor.y >= self.rows.len() as u16 - 1 {
+            self.rows.len() as u16 - 1
+        } else {
+            self.cursor.y + steps
+        };
 
-        if pos_y >= self.rows.len() as u16 {
-            pos_y = self.rows.len() as u16 - 1;
-        }
-
-        if pos_x >= self.rows[pos_y as usize - steps as usize].len() as u16 {
+        if pos_x >= self.rows[self.cursor.y as usize].len() as u16 {
             pos_x = self.rows[pos_y as usize].len() as u16;
+        } else {
+            pos_x = if pos_x >= self.rows[pos_y as usize].len() as u16 {
+                self.rows[pos_y as usize].len() as u16
+            } else {
+                pos_x
+            };
         }
 
         self.cursor.set_pos(pos_x, pos_y);
@@ -59,13 +65,19 @@ impl Editor {
     pub fn move_up(&mut self, steps: u16) {
         let mut pos_x = self.cursor.x;
         let pos_y = if self.cursor.y <= 0 {
-            0
+            self.cursor.y
         } else {
             self.cursor.y - steps
         };
 
-        if pos_x >= self.rows[pos_y as usize + steps as usize].len() as u16 {
+        if pos_x >= self.rows[self.cursor.y as usize].len() as u16 {
             pos_x = self.rows[pos_y as usize].len() as u16;
+        } else {
+            pos_x = if pos_x >= self.rows[pos_y as usize].len() as u16 {
+                self.rows[pos_y as usize].len() as u16
+            } else {
+                pos_x
+            };
         }
 
         self.cursor.set_pos(pos_x, pos_y);
@@ -91,5 +103,43 @@ impl Editor {
 
         self.cursor.y += 1;
         Ok(())
+    }
+
+    // handling deletion of character
+    pub fn delete(&mut self) {
+        if self.cursor.y > self.rows.len() as u16 {
+            return;
+        }
+        if self.cursor.x == 0 && self.cursor.y == 0 {
+            return;
+        }
+
+        let curr_row = self.cursor.y as usize;
+
+        if self.cursor.x > 0 {
+            if self.del_char(self.cursor.x as usize - 1) {
+                if self.cursor.x > self.rows[curr_row].len() as u16 {
+                    self.cursor.x = self.rows[curr_row].len() as u16;
+                } else {
+                    self.cursor.x -= 1;
+                }
+            }
+        } else {
+            let row_content = self.rows[curr_row].clone();
+
+            self.cursor.x = self.rows[curr_row - 1].len() as u16;
+            self.rows[curr_row - 1].push_str(row_content.as_str());
+            self.rows.remove(curr_row);
+            self.cursor.y -= 1;
+        }
+    }
+
+    fn del_char(&mut self, idx: usize) -> bool {
+        if idx >= self.rows[self.cursor.y as usize].len() {
+            false
+        } else {
+            self.rows[self.cursor.y as usize].remove(idx);
+            true
+        }
     }
 }

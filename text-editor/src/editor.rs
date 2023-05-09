@@ -21,7 +21,7 @@ impl Editor {
 
         let mut pos_x = self.cursor.x + steps;
 
-        if pos_x as usize > self.rows[current_row as usize].len() - 1 {
+        if pos_x as usize >= self.rows[current_row as usize].len(){
             pos_x = self.rows[current_row as usize].len() as u16;
         }
 
@@ -48,4 +48,12 @@ impl Editor {
         //
         // }
     }
+    pub fn move_up(&mut self, steps: u16) {
+        let mut pos_x = self.cursor.x;
+        let mut pos_y = self.cursor.y;
+
+        // if pos_y >= self.rows[]  {
+        //
+        // }
+ 
 }

@@ -125,6 +125,7 @@ impl Kass {
                 if let Some(last) = self.app.tabs[self.app.active_index].rows.last_mut() {
                     if last.len() != 0 {
                         last.pop();
+                        self.app.tabs[self.app.active_index].move_left(1);
                     } else {
                         if self.app.tabs[self.app.active_index].rows.len() != 1 {
                             self.app.tabs[self.app.active_index].rows.pop();

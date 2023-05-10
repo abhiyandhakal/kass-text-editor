@@ -90,7 +90,11 @@ impl Kass {
                 }
                 // navigation
                 'l' => self.app.tabs[self.app.active_index].move_right(1),
-                'h' => self.app.tabs[self.app.active_index].move_left(1),
+                'h' => {
+                    if self.cursor.x != 1 {
+                        self.app.tabs[self.app.active_index].move_left(1);
+                    }
+                }
                 'j' => self.app.tabs[self.app.active_index].move_down(1),
                 'k' => self.app.tabs[self.app.active_index].move_up(1),
                 _ => {}

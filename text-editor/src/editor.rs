@@ -5,6 +5,8 @@ pub struct Editor {
     pub rows: Vec<String>,
     filepath: String,
     pub cursor: Position,
+    pub coloff: usize,
+    pub rowoff: usize,
 }
 
 impl Editor {
@@ -13,6 +15,8 @@ impl Editor {
             rows: vec![String::new()],
             filepath: String::new(),
             cursor: Position::new(),
+            coloff: 0,
+            rowoff: 0,
         }
     }
 

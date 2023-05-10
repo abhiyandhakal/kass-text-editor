@@ -144,6 +144,8 @@ impl Kass {
     }
 
     pub fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
+        let mut close = false;
+
         loop {
             terminal.draw(|f| self.ui(f))?;
 
@@ -162,7 +164,13 @@ impl Kass {
                         }
                         KeyCode::Enter => {
                             match self.app.command.as_str() {
-                                ":q" => return Ok(()),
+                                ":q" => {
+                                    self.app.tabs.remove(self.app.active_index);
+
+                                    if self.app.tabs.len() == 0 {
+                                        close = true;
+                                    }
+                                }
                                 ":tabnew" => {
                                     self.app.tabs.push(Editor::new());
                                     self.app.active_index = self.app.tabs.len() - 1;
@@ -186,7 +194,13 @@ impl Kass {
                     Mode::Insert => self.handle_insert_mode()?,
                 }
             }
+
+            if close {
+                break;
+            }
         }
+
+        Ok(())
     }
 
     fn ui<B: Backend>(&mut self, frame: &mut Frame<B>) {

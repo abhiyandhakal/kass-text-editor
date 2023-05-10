@@ -5,7 +5,7 @@ use std::{
 
 use crossterm::{
     cursor::SetCursorStyle,
-    event::{self, Event, KeyCode, KeyEvent, KeyEventState, KeyModifiers},
+    event::{self, Event, KeyEvent, KeyEventState, KeyModifiers},
     execute,
 };
 use tui::{
@@ -17,14 +17,19 @@ use tui::{
     Frame, Terminal,
 };
 
-use crate::{editor::Editor, enums::*, position::Position};
+use crate::{
+    editor::Editor,
+    enums::*,
+    mode_handlers::{handle_command_mode, handle_insert_mode, normal::handle_normal_mode},
+    position::Position,
+};
 
-struct App {
-    mode: Mode,
-    tabs: Vec<Editor>,
-    command: String,
-    clipboard: Vec<String>,
-    active_index: usize,
+pub struct App {
+    pub mode: Mode,
+    pub tabs: Vec<Editor>,
+    pub command: String,
+    pub clipboard: Vec<String>,
+    pub active_index: usize,
 }
 
 impl App {
@@ -51,9 +56,9 @@ impl App {
 }
 
 pub struct Kass {
-    app: App,
-    key_event: KeyEvent,
-    cursor: Position,
+    pub app: App,
+    pub key_event: KeyEvent,
+    pub cursor: Position,
 }
 
 impl Kass {
@@ -71,78 +76,6 @@ impl Kass {
         })
     }
 
-    fn handle_normal_mode(&mut self) -> Result<()> {
-        match self.key_event {
-            KeyEvent {
-                code: event::KeyCode::Char(c),
-                ..
-            } => match c {
-                'i' => {
-                    self.app.tabs[self.app.active_index].move_left(1);
-                    self.app.mode = Mode::Insert;
-                }
-                'a' => {
-                    self.app.mode = Mode::Insert;
-                }
-                ':' => {
-                    self.app.mode = Mode::Command;
-                    self.app.command.push(':');
-                }
-                // navigation
-                'l' => self.app.tabs[self.app.active_index].move_right(1),
-                'h' => {
-                    if self.cursor.x != 1 {
-                        self.app.tabs[self.app.active_index].move_left(1);
-                    }
-                }
-                'j' => self.app.tabs[self.app.active_index].move_down(1),
-                'k' => self.app.tabs[self.app.active_index].move_up(1),
-                _ => {}
-            },
-            KeyEvent {
-                code: event::KeyCode::Tab,
-                ..
-            } => self.app.next(),
-            KeyEvent {
-                code: event::KeyCode::BackTab,
-                ..
-            } => self.app.previous(),
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    fn handle_insert_mode(&mut self) -> Result<()> {
-        match self.key_event.code {
-            event::KeyCode::Char(c) => {
-                if self.cursor.x as usize
-                    == self.app.tabs[self.app.active_index].rows[self.cursor.y as usize].len()
-                    || self.app.tabs[self.app.active_index].rows[self.cursor.y as usize].len() == 0
-                {
-                    self.app.tabs[self.app.active_index].rows[self.cursor.y as usize].push(c);
-                } else {
-                    self.app.tabs[self.app.active_index].rows[self.cursor.y as usize]
-                        .insert(self.cursor.x as usize, c);
-                }
-
-                self.app.tabs[self.app.active_index].move_right(1);
-            }
-            event::KeyCode::Backspace => {
-                self.app.tabs[self.app.active_index].delete();
-            }
-            event::KeyCode::Enter => {
-                self.app.tabs[self.app.active_index].goto_newline()?;
-            }
-            event::KeyCode::Esc => {
-                self.app.mode = Mode::Normal;
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
     pub fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
         let mut close = false;
 
@@ -153,48 +86,9 @@ impl Kass {
                 self.key_event = key;
 
                 match self.app.mode {
-                    Mode::Normal => self.handle_normal_mode()?,
-                    Mode::Command => match key.code {
-                        event::KeyCode::Char(ch) => match ch {
-                            _ => self.app.command.push(ch),
-                        },
-                        KeyCode::Esc => {
-                            self.app.mode = Mode::Normal;
-                            self.app.command = String::new();
-                        }
-                        KeyCode::Enter => {
-                            match self.app.command.as_str() {
-                                ":q" => {
-                                    self.app.tabs.remove(self.app.active_index);
-
-                                    if self.app.tabs.len() == 0 {
-                                        close = true;
-                                    } else if self.app.tabs.len() == self.app.active_index {
-                                        self.app.active_index -= 1;
-                                    }
-                                }
-                                ":qa" => close = true,
-                                ":tabnew" => {
-                                    self.app.tabs.push(Editor::new());
-                                    self.app.active_index = self.app.tabs.len() - 1;
-                                }
-                                _ => {
-                                    self.app.mode = Mode::Normal;
-                                    self.app.command = String::new();
-                                }
-                            };
-
-                            self.app.mode = Mode::Normal;
-                            self.app.command = String::new();
-                        }
-                        KeyCode::Backspace => {
-                            if self.app.command.len() != 0 {
-                                self.app.command.pop();
-                            }
-                        }
-                        _ => {}
-                    },
-                    Mode::Insert => self.handle_insert_mode()?,
+                    Mode::Normal => handle_normal_mode(self)?,
+                    Mode::Command => handle_command_mode(self, &mut close)?,
+                    Mode::Insert => handle_insert_mode(self)?,
                 }
             }
 

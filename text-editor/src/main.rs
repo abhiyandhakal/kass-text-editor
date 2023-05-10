@@ -12,6 +12,7 @@ use tui::{backend::CrosstermBackend, Terminal};
 mod editor;
 mod enums;
 mod kass;
+mod mode_handlers;
 mod position;
 
 fn main() -> Result<()> {

@@ -169,8 +169,11 @@ impl Kass {
 
                                     if self.app.tabs.len() == 0 {
                                         close = true;
+                                    } else if self.app.tabs.len() == self.app.active_index {
+                                        self.app.active_index -= 1;
                                     }
                                 }
+                                ":qa" => close = true,
                                 ":tabnew" => {
                                     self.app.tabs.push(Editor::new());
                                     self.app.active_index = self.app.tabs.len() - 1;

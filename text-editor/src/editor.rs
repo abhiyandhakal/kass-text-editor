@@ -3,12 +3,19 @@ use std::io::Result;
 use crate::position::Position;
 
 #[derive(Debug, Clone)]
+pub struct Bound {
+    pub x1: u16,
+    pub x2: u16,
+}
+
+#[derive(Debug, Clone)]
 pub struct Editor {
     pub rows: Vec<String>,
-    filepath: String,
+    pub filepath: String,
     pub cursor: Position,
-    pub coloff: usize,
-    pub rowoff: usize,
+    pub coloff: u16,
+    pub rowoff: u16,
+    pub bounds: (Bound, Bound),
 }
 
 impl Editor {
@@ -19,6 +26,7 @@ impl Editor {
             cursor: Position::new(),
             coloff: 0,
             rowoff: 0,
+            bounds: (Bound { x1: 0, x2: 0 }, Bound { x1: 0, x2: 0 }),
         }
     }
 
@@ -65,6 +73,10 @@ impl Editor {
         }
 
         self.cursor.set_pos(pos_x, pos_y);
+
+        if self.cursor.y > self.bounds.1.x2 {
+            self.rowoff += 1;
+        }
     }
     pub fn move_up(&mut self, steps: u16) {
         let mut pos_x = self.cursor.x;
@@ -85,6 +97,12 @@ impl Editor {
         }
 
         self.cursor.set_pos(pos_x, pos_y);
+
+        if self.cursor.y < self.bounds.1.x2 {
+            if self.rowoff != 0 {
+                self.rowoff -= 1;
+            }
+        }
     }
 
     pub fn insert_row(&mut self, idx: usize, row_content: String) {
@@ -105,7 +123,12 @@ impl Editor {
 
         self.cursor.x = 0;
 
-        self.cursor.y += 1;
+        if self.cursor.y < self.bounds.1.x2 {
+            self.cursor.y += 1;
+        } else {
+            self.rowoff += 1;
+        }
+
         Ok(())
     }
 

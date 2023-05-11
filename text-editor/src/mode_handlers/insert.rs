@@ -4,10 +4,6 @@ use crossterm::event;
 
 use crate::{enums::Mode, kass::Kass};
 
-// pub fn handle_insert_mode(kass: &mut Kass) -> Result<()> {
-//     Ok(())
-// }
-
 pub fn handle_insert_mode(kass: &mut Kass) -> Result<()> {
     match kass.key_event.code {
         event::KeyCode::Char(c) => {

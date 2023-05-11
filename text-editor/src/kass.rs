@@ -18,9 +18,11 @@ use tui::{
 };
 
 use crate::{
-    editor::Editor,
+    editor::{Bound, Editor},
     enums::*,
-    mode_handlers::{handle_command_mode, handle_insert_mode, normal::handle_normal_mode},
+    mode_handlers::{
+        command::handle_command_mode, insert::handle_insert_mode, normal::handle_normal_mode,
+    },
     position::Position,
 };
 
@@ -59,6 +61,7 @@ pub struct Kass {
     pub app: App,
     pub key_event: KeyEvent,
     pub cursor: Position,
+    pub editor_size: (u16, u16),
 }
 
 impl Kass {
@@ -73,6 +76,7 @@ impl Kass {
                 state: KeyEventState::NONE,
             },
             cursor: Position::new(),
+            editor_size: (0, 0),
         })
     }
 
@@ -146,8 +150,43 @@ impl Kass {
 
         frame.render_widget(tabs, chunks[0]);
 
-        let rows: Vec<ListItem> = self.app.tabs[self.app.active_index]
-            .rows
+        // editor height and width
+        let editor_height = chunks[1].height - 2;
+        let editor_width = chunks[1].width;
+        self.editor_size = (editor_width, editor_height);
+
+        // set bounds
+        self.app.tabs[self.app.active_index].bounds = (
+            Bound {
+                x1: self.app.tabs[self.app.active_index].coloff,
+                x2: self.app.tabs[self.app.active_index].coloff + editor_width,
+            },
+            Bound {
+                x1: self.app.tabs[self.app.active_index].rowoff,
+                x2: self.app.tabs[self.app.active_index].rowoff + editor_height,
+            },
+        );
+        let (bound_x, bound_y) = self.app.tabs[self.app.active_index].bounds.clone();
+
+        let mut new_rows: Vec<String> = vec![];
+
+        // vertical scrolling
+        let mut i = 0;
+        loop {
+            if i >= bound_y.x1 {
+                new_rows.push(self.app.tabs[self.app.active_index].rows[i as usize].clone());
+            }
+
+            i += 1;
+
+            if i as usize == self.app.tabs[self.app.active_index].rows.len()
+                || i == bound_y.x2 - bound_y.x1
+            {
+                break;
+            }
+        }
+
+        let rows: Vec<ListItem> = new_rows
             .iter()
             .enumerate()
             .map(|(_i, m)| {
@@ -157,6 +196,8 @@ impl Kass {
             .collect();
 
         let rows = List::new(rows).block(Block::default().borders(Borders::ALL));
+
+        // update cursor
 
         self.cursor.set_pos(
             self.app.tabs[self.app.active_index].cursor.x,

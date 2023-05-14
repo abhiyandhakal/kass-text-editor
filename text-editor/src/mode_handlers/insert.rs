@@ -5,15 +5,15 @@ use crossterm::event;
 use crate::{enums::Mode, kass::Kass};
 
 pub fn handle_insert_mode(kass: &mut Kass) -> Result<()> {
+    let curr_row = kass.cursor.y as usize + kass.app.tabs[kass.app.active_index].rowoff as usize;
     match kass.key_event.code {
         event::KeyCode::Char(c) => {
-            if kass.cursor.x as usize
-                == kass.app.tabs[kass.app.active_index].rows[kass.cursor.y as usize].len()
-                || kass.app.tabs[kass.app.active_index].rows[kass.cursor.y as usize].len() == 0
+            if kass.cursor.x as usize == kass.app.tabs[kass.app.active_index].rows[curr_row].len()
+                || kass.app.tabs[kass.app.active_index].rows[curr_row].len() == 0
             {
-                kass.app.tabs[kass.app.active_index].rows[kass.cursor.y as usize].push(c);
+                kass.app.tabs[kass.app.active_index].rows[curr_row].push(c);
             } else {
-                kass.app.tabs[kass.app.active_index].rows[kass.cursor.y as usize]
+                kass.app.tabs[kass.app.active_index].rows[curr_row]
                     .insert(kass.cursor.x as usize, c);
             }
 

@@ -55,14 +55,15 @@ impl Editor {
     }
 
     pub fn move_down(&mut self, steps: u16) {
+        let curr_row = self.cursor.y + self.rowoff;
         let mut pos_x = self.cursor.x;
-        let pos_y = if self.cursor.y >= self.rows.len() as u16 - 1 {
+        let pos_y = if curr_row >= self.rows.len() as u16 - 1 {
             self.rows.len() as u16 - 1
         } else {
             self.cursor.y + steps
         };
 
-        if pos_x >= self.rows[self.cursor.y as usize].len() as u16 {
+        if pos_x >= self.rows[curr_row as usize].len() as u16 {
             pos_x = self.rows[pos_y as usize].len() as u16;
         } else {
             pos_x = if pos_x >= self.rows[pos_y as usize].len() as u16 {
@@ -113,7 +114,7 @@ impl Editor {
     }
 
     pub fn goto_newline(&mut self) -> Result<()> {
-        let row_idx = self.cursor.y as usize;
+        let row_idx = self.cursor.y as usize + self.rowoff as usize;
         if self.cursor.x == 0 {
             self.insert_row(row_idx, String::from(""));
         } else {
@@ -123,7 +124,7 @@ impl Editor {
 
         self.cursor.x = 0;
 
-        if self.cursor.y < self.bounds.1.x2 {
+        if self.cursor.y <= self.bounds.1.x2 - self.rowoff - 2 {
             self.cursor.y += 1;
         } else {
             self.rowoff += 1;
@@ -167,6 +168,25 @@ impl Editor {
         } else {
             self.rows[self.cursor.y as usize].remove(idx);
             true
+        }
+    }
+
+    fn scroll(&mut self) {
+        // for vertical scrolling
+        let terminal_height = self.bounds.1.x2 - self.rowoff - 2;
+        if self.cursor.y < self.rowoff {
+            self.rowoff = self.cursor.y;
+        }
+        if self.cursor.y >= self.rowoff + terminal_height {
+            self.rowoff = self.cursor.y - terminal_height + 1;
+        }
+
+        // for horizontal scrolling
+        if self.cursor.x < self.coloff {
+            self.coloff = self.cursor.x;
+        }
+        if self.cursor.x >= self.coloff + self.bounds.1.x2 {
+            self.coloff = self.cursor.x - self.bounds.1.x2 + 1;
         }
     }
 }

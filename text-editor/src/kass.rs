@@ -173,15 +173,14 @@ impl Kass {
         // vertical scrolling
         let mut i = 0;
         loop {
+            let row = i;
             if i >= bound_y.x1 {
-                new_rows.push(self.app.tabs[self.app.active_index].rows[i as usize].clone());
+                new_rows.push(self.app.tabs[self.app.active_index].rows[row as usize].clone());
             }
 
             i += 1;
 
-            if i as usize == self.app.tabs[self.app.active_index].rows.len()
-                || i == bound_y.x2 - bound_y.x1
-            {
+            if i as usize == self.app.tabs[self.app.active_index].rows.len() || i == bound_y.x2 {
                 break;
             }
         }

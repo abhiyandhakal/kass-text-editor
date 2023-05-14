@@ -31,7 +31,7 @@ impl Editor {
     }
 
     pub fn move_right(&mut self, steps: u16) {
-        let current_row = self.cursor.y;
+        let current_row = self.cursor.y + self.rowoff;
 
         let mut pos_x = self.cursor.x + steps;
 
@@ -39,11 +39,11 @@ impl Editor {
             pos_x = self.rows[current_row as usize].len() as u16;
         }
 
-        self.cursor.set_pos(pos_x, current_row);
+        self.cursor.x = pos_x;
     }
 
     pub fn move_left(&mut self, steps: u16) {
-        let current_row = self.cursor.y;
+        let current_row = self.cursor.y + self.rowoff;
 
         let mut pos_x = 0;
 
@@ -115,10 +115,11 @@ impl Editor {
 
     pub fn goto_newline(&mut self) -> Result<()> {
         let row_idx = self.cursor.y as usize + self.rowoff as usize;
+
         if self.cursor.x == 0 {
             self.insert_row(row_idx, String::from(""));
         } else {
-            let content = self.rows[self.cursor.y as usize].split_off(self.cursor.x as usize);
+            let content = self.rows[row_idx].split_off(self.cursor.x as usize);
             self.insert_row(row_idx + 1, content);
         };
 

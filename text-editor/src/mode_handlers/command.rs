@@ -85,3 +85,15 @@ fn new_tab(input: &str, _close: &mut bool, kass: &mut Kass) {
         kass.app.active_index = kass.app.tabs.len() - 1;
     }
 }
+
+// fn new_tab(input: &str, _close: &mut bool, kass: &mut Kass) {
+//     if !Path::new(input).is_dir() {
+//         let mut new_editor = Editor::default();
+//         if input != "" {
+//             new_editor.set_filepath(input.to_string());
+//         }
+//
+//         kass.app.tabs.push(new_editor);
+//         kass.app.active_index = kass.app.tabs.len() - 1;
+//     }
+// }

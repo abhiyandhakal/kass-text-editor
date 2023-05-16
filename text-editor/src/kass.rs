@@ -1,4 +1,6 @@
 use std::{
+    env::current_dir,
+    format,
     io::{stdout, Result},
     vec,
 };
@@ -117,20 +119,42 @@ impl Kass {
             )
             .split(frame.size());
 
-        let (mode_span, style) = match self.app.mode {
+        let filepath = format!(
+            "{}/{}",
+            current_dir()
+                .expect("Couldn't get current dir")
+                .to_str()
+                .expect("Couldn't convert to string"),
+            self.app.tabs[self.app.active_index].filepath.as_str()
+        );
+
+        let filepath_span = Span::styled(filepath, Style::default().fg(Color::Black));
+
+        let (statusline_span, style) = match self.app.mode {
             Mode::Normal => (
-                vec![Span::raw("Normal")],
-                Style::default().fg(Color::Yellow),
+                vec![
+                    Span::styled("Normal", Style::default().fg(Color::Yellow)),
+                    Span::raw("    "),
+                    filepath_span,
+                ],
+                Style::default(),
             ),
-            Mode::Insert => (vec![Span::raw("Insert")], Style::default()),
-            Mode::Command => (vec![Span::raw("Command")], Style::default()),
+            Mode::Insert => (
+                vec![Span::raw("Insert"), Span::raw("    "), filepath_span],
+                Style::default(),
+            ),
+            Mode::Command => (
+                vec![Span::raw("Command"), Span::raw("    "), filepath_span],
+                Style::default(),
+            ),
         };
 
-        let mut mode_text = Text::from(Spans::from(mode_span));
-        mode_text.patch_style(style);
+        let mut statusline_text = Text::from(Spans::from(statusline_span));
+        statusline_text.patch_style(style);
 
-        let mode_paragraph = Paragraph::new(mode_text).style(Style::default().bg(Color::DarkGray));
-        frame.render_widget(mode_paragraph, chunks[2]);
+        let statusline_paragraph =
+            Paragraph::new(statusline_text).style(Style::default().bg(Color::DarkGray));
+        frame.render_widget(statusline_paragraph, chunks[2]);
 
         let command_paragraph = Paragraph::new(Text::from(Spans::from(self.app.command.clone())));
         frame.render_widget(command_paragraph, chunks[3]);

@@ -33,7 +33,7 @@ impl Editor {
     }
 
     fn file_to_rows(filepath: String) -> Result<Vec<String>> {
-        let mut rows: Vec<String> = vec![];
+        let mut rows: Vec<String> = vec![String::new()];
 
         if Path::new(filepath.as_str()).is_file() {
             let content = read_to_string(filepath)?;

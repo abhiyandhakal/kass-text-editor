@@ -39,7 +39,7 @@ impl App {
         Ok(App {
             mode: Mode::Normal,
             command: String::new(),
-            tabs: vec![Editor::new()],
+            tabs: vec![Editor::default()],
             clipboard: vec![],
             active_index: 0,
         })

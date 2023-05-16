@@ -1,4 +1,4 @@
-use std::{io::Result, path::Path};
+use std::{fs::read_to_string, io::Result, path::Path};
 
 use crate::position::Position;
 
@@ -20,7 +20,7 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn new() -> Editor {
+    pub fn default() -> Editor {
         Editor {
             rows: vec![String::new()],
             filepath: String::new(),
@@ -30,6 +30,40 @@ impl Editor {
             bounds: (Bound { x1: 0, x2: 0 }, Bound { x1: 0, x2: 0 }),
             title: String::from("New Tab"),
         }
+    }
+
+    fn file_to_rows(filepath: String) -> Result<Vec<String>> {
+        let mut rows: Vec<String> = vec![];
+
+        if Path::new(filepath.as_str()).is_file() {
+            let content = read_to_string(filepath)?;
+
+            // let myrows = content.split('\n').collect();
+            rows = content.lines().map(String::from).collect();
+        }
+
+        Ok(rows)
+    }
+
+    pub fn new(filepath: String) -> Result<Editor> {
+        let rows = Self::file_to_rows(filepath.clone())?;
+
+        let file_name: String = match Path::new(filepath.as_str()).file_name() {
+            Some(filename) => filename.to_string_lossy().to_string(),
+            None => String::from("New Tab"),
+        };
+
+        let title = file_name;
+
+        Ok(Editor {
+            rows,
+            filepath,
+            cursor: Position::new(),
+            coloff: 0,
+            rowoff: 0,
+            bounds: (Bound { x1: 0, x2: 0 }, Bound { x1: 0, x2: 0 }),
+            title,
+        })
     }
 
     pub fn set_filepath(&mut self, filepath: String) {

@@ -6,7 +6,7 @@ use crate::{editor::Editor, enums::Mode, kass::Kass};
 
 pub fn handle_command_mode(kass: &mut Kass, close: &mut bool) -> Result<()> {
     let mut prefix_list: Vec<(&str, fn(&str, &mut bool, &mut Kass))> = vec![
-        (":e", edit),
+        (":e", edit_file),
         (":q", quit),
         (":qa", quit_all),
         (":tabnew", new_tab),
@@ -47,7 +47,7 @@ pub fn handle_command_mode(kass: &mut Kass, close: &mut bool) -> Result<()> {
     Ok(())
 }
 
-fn edit(_input: &str, _close: &mut bool, _kass: &mut Kass) {}
+fn edit_file(_input: &str, _close: &mut bool, _kass: &mut Kass) {}
 
 fn quit(input: &str, close: &mut bool, kass: &mut Kass) {
     let mut to_remove = kass.app.active_index;
@@ -75,9 +75,10 @@ fn quit_all(_input: &str, close: &mut bool, _kass: &mut Kass) {
 
 fn new_tab(input: &str, _close: &mut bool, kass: &mut Kass) {
     if !Path::new(input).is_dir() {
-        let mut new_editor = Editor::new();
+        let mut new_editor = Editor::default();
         if input != "" {
-            new_editor.set_filepath(input.to_string());
+            new_editor =
+                Editor::new(input.to_string()).expect("Couldn't create new editor instance");
         }
 
         kass.app.tabs.push(new_editor);

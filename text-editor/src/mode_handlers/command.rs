@@ -1,4 +1,4 @@
-use std::io::Result;
+use std::{io::Result, path::Path};
 
 use crossterm::event::{self, KeyCode};
 
@@ -74,12 +74,13 @@ fn quit_all(_input: &str, close: &mut bool, _kass: &mut Kass) {
 }
 
 fn new_tab(input: &str, _close: &mut bool, kass: &mut Kass) {
-    let mut new_editor = Editor::new();
+    if !Path::new(input).is_dir() {
+        let mut new_editor = Editor::new();
+        if input != "" {
+            new_editor.set_filepath(input.to_string());
+        }
 
-    if input != "" {
-        new_editor.set_filepath(input.to_string());
+        kass.app.tabs.push(new_editor);
+        kass.app.active_index = kass.app.tabs.len() - 1;
     }
-
-    kass.app.tabs.push(new_editor);
-    kass.app.active_index = kass.app.tabs.len() - 1;
 }

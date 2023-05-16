@@ -1,4 +1,4 @@
-use std::io::Result;
+use std::{io::Result, path::Path};
 
 use crate::position::Position;
 
@@ -16,6 +16,7 @@ pub struct Editor {
     pub coloff: u16,
     pub rowoff: u16,
     pub bounds: (Bound, Bound),
+    pub title: String,
 }
 
 impl Editor {
@@ -27,7 +28,17 @@ impl Editor {
             coloff: 0,
             rowoff: 0,
             bounds: (Bound { x1: 0, x2: 0 }, Bound { x1: 0, x2: 0 }),
+            title: String::from("New Tab"),
         }
+    }
+
+    pub fn set_filepath(&mut self, filepath: String) {
+        let file_name: String = match Path::new(filepath.as_str()).file_name() {
+            Some(filename) => filename.to_string_lossy().to_string(),
+            None => String::from("New Tab"),
+        };
+
+        self.title = file_name;
     }
 
     pub fn move_right(&mut self, steps: u16) {

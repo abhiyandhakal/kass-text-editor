@@ -2,14 +2,7 @@ use crate::{enums::Mode, kass::Kass};
 use crossterm::event::{self, KeyEvent};
 use std::io::Result;
 
-use super::group::Group;
-
 pub fn handle_normal_mode(kass: &mut Kass) -> Result<()> {
-    let command_list = vec![
-        Group::new("i", insert_i),
-        // Group::new("a", )
-    ];
-
     match kass.key_event {
         KeyEvent {
             code: event::KeyCode::Char(c),

@@ -139,14 +139,25 @@ impl Kass {
             .app
             .tabs
             .iter()
-            .map(|_tab| Spans::from(vec![Span::styled("abc", style)]))
+            .enumerate()
+            .map(|(i, tab)| {
+                Spans::from(vec![Span::styled(
+                    format!(" {}. {} ", i, &tab.title),
+                    style,
+                )])
+            })
             .collect();
 
         let tabs = Tabs::new(tab_titles)
             .block(Block::default().borders(Borders::ALL).title("Tabs"))
             .select(self.app.active_index)
             .style(Style::default().fg(Color::Cyan))
-            .highlight_style(Style::default().add_modifier(Modifier::BOLD).bg(Color::Red));
+            .highlight_style(
+                Style::default()
+                    .add_modifier(Modifier::BOLD)
+                    .bg(Color::Gray)
+                    .fg(Color::Black),
+            );
 
         frame.render_widget(tabs, chunks[0]);
 
@@ -166,7 +177,7 @@ impl Kass {
                 x2: self.app.tabs[self.app.active_index].rowoff + editor_height,
             },
         );
-        let (bound_x, bound_y) = self.app.tabs[self.app.active_index].bounds.clone();
+        let (_bound_x, bound_y) = self.app.tabs[self.app.active_index].bounds.clone();
 
         let mut new_rows: Vec<String> = vec![];
 

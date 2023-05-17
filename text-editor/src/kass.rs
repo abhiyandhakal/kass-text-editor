@@ -32,6 +32,8 @@ pub struct App {
     pub mode: Mode,
     pub tabs: Vec<Editor>,
     pub command: String,
+    pub error: String,
+    pub is_error: bool,
     pub clipboard: Vec<String>,
     pub active_index: usize,
 }
@@ -44,6 +46,8 @@ impl App {
             tabs: vec![Editor::default()],
             clipboard: vec![],
             active_index: 0,
+            error: String::new(),
+            is_error: false,
         })
     }
     pub fn next(&mut self) {
@@ -157,7 +161,22 @@ impl Kass {
         frame.render_widget(statusline_paragraph, chunks[2]);
 
         let command_paragraph = Paragraph::new(Text::from(Spans::from(self.app.command.clone())));
-        frame.render_widget(command_paragraph, chunks[3]);
+        let error_paragraph = Paragraph::new(Text::from(Spans::from(Span::styled(
+            self.app.error.clone(),
+            Style::default()
+                .fg(Color::Rgb(225, 130, 0))
+                .add_modifier(Modifier::BOLD)
+                .add_modifier(Modifier::ITALIC),
+        ))));
+        frame.render_widget(
+            if self.app.is_error {
+                error_paragraph
+            } else {
+                command_paragraph
+            },
+            chunks[3],
+        );
+        self.app.is_error = false;
 
         let tab_titles = self
             .app

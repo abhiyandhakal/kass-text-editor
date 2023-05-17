@@ -23,14 +23,16 @@ pub fn handle_command_mode(kass: &mut Kass, close: &mut bool) -> Result<()> {
         KeyCode::Enter => {
             let command = String::from(kass.app.command.clone());
             let mut separated = command.splitn(2, ' ');
+
             if let Some(prefix) = separated.next() {
                 let rest = separated.next().unwrap_or("");
                 match prefix_list.iter_mut().find(|(p, _)| *p == prefix) {
                     Some((_, func)) => func(rest, close, kass),
-                    None => {}
+                    None => {
+                        kass.app.is_error = true;
+                        kass.app.error = "Command not found.".to_string();
+                    }
                 }
-            } else {
-                // do nothing
             }
 
             kass.app.mode = Mode::Normal;
@@ -48,9 +50,18 @@ pub fn handle_command_mode(kass: &mut Kass, close: &mut bool) -> Result<()> {
 }
 
 fn edit_file(input: &str, _close: &mut bool, kass: &mut Kass) {
-    kass.app.tabs[kass.app.active_index]
-        .set_filepath(input.to_string())
-        .expect("Couldn't set filepath");
+    if !Path::new(input).is_dir() {
+        match kass.app.tabs[kass.app.active_index].set_filepath(input.to_string()) {
+            Ok(_) => {}
+            Err(_) => {
+                kass.app.is_error = true;
+                kass.app.error = "Couldn't edit file".to_string();
+            }
+        }
+    } else {
+        kass.app.is_error = true;
+        kass.app.error = "Cannot edit a directory. Provide a file path".to_string();
+    }
 }
 
 fn quit(input: &str, close: &mut bool, kass: &mut Kass) {
@@ -87,17 +98,8 @@ fn new_tab(input: &str, _close: &mut bool, kass: &mut Kass) {
 
         kass.app.tabs.push(new_editor);
         kass.app.active_index = kass.app.tabs.len() - 1;
+    } else {
+        kass.app.is_error = true;
+        kass.app.error = "Provide a filepath".to_string();
     }
 }
-
-// fn new_tab(input: &str, _close: &mut bool, kass: &mut Kass) {
-//     if !Path::new(input).is_dir() {
-//         let mut new_editor = Editor::default();
-//         if input != "" {
-//             new_editor.set_filepath(input.to_string());
-//         }
-//
-//         kass.app.tabs.push(new_editor);
-//         kass.app.active_index = kass.app.tabs.len() - 1;
-//     }
-// }

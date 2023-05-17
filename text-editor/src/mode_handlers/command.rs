@@ -47,7 +47,11 @@ pub fn handle_command_mode(kass: &mut Kass, close: &mut bool) -> Result<()> {
     Ok(())
 }
 
-fn edit_file(_input: &str, _close: &mut bool, _kass: &mut Kass) {}
+fn edit_file(input: &str, _close: &mut bool, kass: &mut Kass) {
+    kass.app.tabs[kass.app.active_index]
+        .set_filepath(input.to_string())
+        .expect("Couldn't set filepath");
+}
 
 fn quit(input: &str, close: &mut bool, kass: &mut Kass) {
     let mut to_remove = kass.app.active_index;

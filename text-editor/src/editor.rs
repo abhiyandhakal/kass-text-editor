@@ -66,13 +66,16 @@ impl Editor {
         })
     }
 
-    pub fn set_filepath(&mut self, filepath: String) {
+    pub fn set_filepath(&mut self, filepath: String) -> Result<()> {
         let file_name: String = match Path::new(filepath.as_str()).file_name() {
             Some(filename) => filename.to_string_lossy().to_string(),
             None => String::from("New Tab"),
         };
 
         self.title = file_name;
+        self.rows = Self::file_to_rows(filepath.clone())?;
+
+        Ok(())
     }
 
     pub fn move_right(&mut self, steps: u16) {

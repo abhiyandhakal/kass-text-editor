@@ -208,6 +208,7 @@ impl Kass {
         let editor_height = chunks[1].height - 2;
         let editor_width = chunks[1].width;
         self.editor_size = (editor_width, editor_height);
+        self.app.tabs[self.app.active_index].boundary(editor_width, editor_height); //setting height and width
 
         // set bounds
         self.app.tabs[self.app.active_index].bounds = (

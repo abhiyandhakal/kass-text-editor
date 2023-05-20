@@ -1,4 +1,8 @@
-use std::{fs::read_to_string, io::Result, path::Path};
+use std::{
+    fs::{read_to_string, OpenOptions},
+    io::{prelude::*, Result},
+    path::Path,
+};
 
 use crate::position::Position;
 
@@ -20,18 +24,6 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn default() -> Editor {
-        Editor {
-            rows: vec![String::new()],
-            filepath: String::new(),
-            cursor: Position::new(),
-            coloff: 0,
-            rowoff: 0,
-            bounds: (Bound { x1: 0, x2: 0 }, Bound { x1: 0, x2: 0 }),
-            title: String::from("New Tab"),
-        }
-    }
-
     fn file_to_rows(filepath: String) -> Result<Vec<String>> {
         let mut rows: Vec<String> = vec![String::new()];
 
@@ -43,6 +35,12 @@ impl Editor {
         }
 
         Ok(rows)
+    }
+
+    fn rows_to_file(rows: Vec<String>) -> String {
+        let content = rows.join("\n");
+
+        content
     }
 
     pub fn new(filepath: String) -> Result<Editor> {
@@ -64,6 +62,29 @@ impl Editor {
             bounds: (Bound { x1: 0, x2: 0 }, Bound { x1: 0, x2: 0 }),
             title,
         })
+    }
+
+    pub fn is_saved(&self) -> Result<bool> {
+        let rows = Self::file_to_rows(self.filepath.clone())?;
+
+        if self.rows.clone() == rows {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn save(&mut self) -> Result<()> {
+        // Open the file with write mode and create it if it doesn't exist
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&self.filepath)?;
+
+        file.write_all(Self::rows_to_file(self.rows.clone()).as_bytes())?;
+
+        Ok(())
     }
 
     pub fn set_filepath(&mut self, filepath: String) -> Result<()> {

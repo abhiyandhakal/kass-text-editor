@@ -2,6 +2,7 @@ use std::{
     env::current_dir,
     format,
     io::{stdout, Result},
+    path::Path,
     vec,
 };
 
@@ -31,23 +32,35 @@ use crate::{
 pub struct App {
     pub mode: Mode,
     pub tabs: Vec<Editor>,
+
     pub command: String,
     pub error: String,
-    pub is_error: bool,
+    pub info: String,
+
+    pub action: Action,
     pub clipboard: Vec<String>,
     pub active_index: usize,
 }
 
 impl App {
     fn new() -> Result<App> {
+        let mut filepath = "unnamed".to_string();
+        let mut counter = 0;
+
+        while Path::new(&filepath).exists() {
+            counter += 1;
+            filepath = format!("{}-{}", filepath, counter);
+        }
+
         Ok(App {
             mode: Mode::Normal,
             command: String::new(),
-            tabs: vec![Editor::default()],
+            tabs: vec![Editor::new(filepath.clone())?],
             clipboard: vec![],
             active_index: 0,
             error: String::new(),
-            is_error: false,
+            info: String::new(),
+            action: Action::Command,
         })
     }
     pub fn next(&mut self) {
@@ -168,15 +181,21 @@ impl Kass {
                 .add_modifier(Modifier::BOLD)
                 .add_modifier(Modifier::ITALIC),
         ))));
+        let info_paragraph = Paragraph::new(Text::from(self.app.info.clone()));
         frame.render_widget(
-            if self.app.is_error {
-                error_paragraph
-            } else {
-                command_paragraph
+            // if self.app.is_error {
+            //     error_paragraph
+            // } else {
+            //     command_paragraph
+            // },
+            match self.app.action {
+                Action::Command => command_paragraph,
+                Action::Info => info_paragraph,
+                Action::Error => error_paragraph,
             },
             chunks[3],
         );
-        self.app.is_error = false;
+        self.app.action = Action::Command;
 
         let tab_titles = self
             .app

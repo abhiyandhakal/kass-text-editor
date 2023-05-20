@@ -4,3 +4,10 @@ pub enum Mode {
     Insert,
     Command,
 }
+
+#[derive(Debug, Clone, Copy)]
+pub enum Action {
+    Command,
+    Error,
+    Info,
+}

@@ -20,6 +20,7 @@ pub struct Editor {
     pub coloff: u16,
     pub rowoff: u16,
     pub bounds: (Bound, Bound),
+    pub editor_size: Position,
     pub title: String,
 }
 
@@ -60,6 +61,7 @@ impl Editor {
             coloff: 0,
             rowoff: 0,
             bounds: (Bound { x1: 0, x2: 0 }, Bound { x1: 0, x2: 0 }),
+            editor_size: Position::new(),
             title,
         })
     }
@@ -99,6 +101,11 @@ impl Editor {
         Ok(())
     }
 
+    pub fn boundary(&mut self, terminal_width: u16, terminal_height: u16) {
+        self.editor_size.x = terminal_width;
+        self.editor_size.y = terminal_height - 1;
+    }
+
     pub fn move_right(&mut self, steps: u16) {
         let current_row = self.cursor.y + self.rowoff;
 
@@ -112,15 +119,13 @@ impl Editor {
     }
 
     pub fn move_left(&mut self, steps: u16) {
-        let current_row = self.cursor.y + self.rowoff;
-
         let mut pos_x = 0;
 
         if self.cursor.x >= steps {
             pos_x = self.cursor.x - steps;
         }
 
-        self.cursor.set_pos(pos_x, current_row);
+        self.cursor.set_pos(pos_x, self.cursor.y);
     }
 
     pub fn move_down(&mut self, steps: u16) {
@@ -129,7 +134,7 @@ impl Editor {
         let pos_y = if curr_row >= self.rows.len() as u16 - 1 {
             self.rows.len() as u16 - 1
         } else {
-            self.cursor.y + steps
+            curr_row + steps
         };
 
         if pos_x >= self.rows[curr_row as usize].len() as u16 {
@@ -142,35 +147,51 @@ impl Editor {
             };
         }
 
-        self.cursor.set_pos(pos_x, pos_y);
+        self.cursor.x = pos_x;
 
-        if self.cursor.y > self.bounds.1.x2 {
-            self.rowoff += 1;
+        if curr_row + 1 < self.rows.len() as u16 {
+            if self.cursor.y <= self.editor_size.y - 1 {
+                self.cursor.y += 1;
+            } else {
+                self.rowoff += 1;
+            }
         }
+
+        // execute!(stdout()
+        //     .queue(cursor::MoveTo(40, 6))
+        //     .expect("err")
+        //     .queue(Print(format!(
+        //         "{} ,{}, {}, {}",
+        //         self.rows.len(),
+        //         curr_row,
+        //         self.cursor.y,
+        //         self.rowoff
+        //     )))
+        //     .expect("err"));
     }
     pub fn move_up(&mut self, steps: u16) {
-        let mut pos_x = self.cursor.x;
-        let pos_y = if self.cursor.y <= 0 {
-            self.cursor.y
-        } else {
-            self.cursor.y - steps
-        };
+        let curr_row = self.cursor.y + self.rowoff;
 
-        if pos_x >= self.rows[self.cursor.y as usize].len() as u16 {
-            pos_x = self.rows[pos_y as usize].len() as u16;
+        let mut pos_x = self.cursor.x;
+        let pos_y: u16 = self.cursor.y.saturating_sub(steps);
+
+        if pos_x >= self.rows[curr_row as usize].len() as u16 {
+            pos_x = self.rows[curr_row.saturating_sub(steps) as usize].len() as u16;
         } else {
             pos_x = if pos_x >= self.rows[pos_y as usize].len() as u16 {
-                self.rows[pos_y as usize].len() as u16
+                self.rows[curr_row.saturating_sub(steps) as usize].len() as u16
             } else {
                 pos_x
             };
         }
 
-        self.cursor.set_pos(pos_x, pos_y);
+        self.cursor.x = pos_x;
 
-        if self.cursor.y < self.bounds.1.x2 {
-            if self.rowoff != 0 {
-                self.rowoff -= 1;
+        if pos_y < self.editor_size.y + 1 {
+            if self.rowoff != 0 && self.cursor.y == 0 {
+                self.rowoff = self.rowoff.saturating_sub(1);
+            } else {
+                self.cursor.y = pos_y;
             }
         }
     }

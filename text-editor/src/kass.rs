@@ -217,7 +217,7 @@ impl Kass {
             .highlight_style(
                 Style::default()
                     .add_modifier(Modifier::BOLD)
-                    .bg(Color::Gray)
+                    .bg(Color::Blue)
                     .fg(Color::Black),
             );
 

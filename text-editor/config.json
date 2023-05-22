@@ -1,0 +1,9 @@
+{
+	"commands": {
+		"edit_file": "e",
+		"quit": "q",
+		"quit_all": "qa",
+		"new_tab": "tabnew",
+		"write": "w"
+	}
+}

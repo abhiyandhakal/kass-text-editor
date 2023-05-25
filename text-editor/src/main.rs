@@ -1,4 +1,4 @@
-use std::io::{stdout, Result};
+use std::io::stdout;
 
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
@@ -15,21 +15,57 @@ mod kass;
 mod mode_handlers;
 mod position;
 
-fn main() -> Result<()> {
-    enable_raw_mode()?;
-    execute!(stdout(), EnterAlternateScreen, EnableMouseCapture)?;
-    let backend = CrosstermBackend::new(stdout());
-    let mut terminal = Terminal::new(backend)?;
-    let mut kass_editor = Kass::new()?;
-    kass_editor.run(&mut terminal)?;
+fn main() {
+    let mut kass_editor = match Kass::new() {
+        Ok(editor) => Some(editor),
+        Err(_) => None,
+    };
 
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
+    if let Some(editor) = &mut kass_editor {
+        match enable_raw_mode() {
+            Ok(_) => {}
+            Err(e) => editor.set_error(e.to_string().as_str()),
+        }
 
-    Ok(())
+        match execute!(stdout(), EnterAlternateScreen, EnableMouseCapture) {
+            Ok(_) => {}
+            Err(e) => editor.set_error(e.to_string().as_str()),
+        };
+
+        let backend = CrosstermBackend::new(stdout());
+
+        let mut terminal = match Terminal::new(backend) {
+            Ok(terminal) => Some(terminal),
+            Err(e) => {
+                editor.set_error(e.to_string().as_str());
+                None
+            }
+        };
+
+        if let Some(terminal) = &mut terminal {
+            match editor.run(terminal) {
+                Ok(_) => {}
+                Err(e) => editor.set_error(e.to_string().as_str()),
+            };
+
+            match disable_raw_mode() {
+                Ok(_) => {}
+                Err(e) => editor.set_error(e.to_string().as_str()),
+            };
+
+            match execute!(
+                terminal.backend_mut(),
+                LeaveAlternateScreen,
+                DisableMouseCapture
+            ) {
+                Ok(_) => {}
+                Err(e) => editor.set_error(e.to_string().as_str()),
+            };
+
+            match terminal.show_cursor() {
+                Ok(_) => {}
+                Err(e) => editor.set_error(e.to_string().as_str()),
+            };
+        }
+    }
 }

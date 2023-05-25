@@ -309,4 +309,14 @@ impl Kass {
             ),
         }
     }
+
+    pub fn set_info(&mut self, info: &str) {
+        self.app.action = Action::Info;
+        self.app.info = info.to_string();
+    }
+
+    pub fn set_error(&mut self, error: &str) {
+        self.app.action = Action::Error;
+        self.app.error = error.to_string();
+    }
 }

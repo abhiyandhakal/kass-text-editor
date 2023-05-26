@@ -66,13 +66,20 @@ impl Editor {
         })
     }
 
-    pub fn is_saved(&self) -> Result<bool> {
-        let rows = Self::file_to_rows(self.filepath.clone())?;
+    pub fn is_saved(&self) -> bool {
+        let rows = match Self::file_to_rows(self.filepath.clone()) {
+            Ok(rows) => Some(rows),
+            Err(_) => None,
+        };
 
-        if self.rows.clone() == rows {
-            Ok(true)
+        if let Some(rows) = rows {
+            if self.rows.clone() == rows {
+                true
+            } else {
+                false
+            }
         } else {
-            Ok(false)
+            true
         }
     }
 

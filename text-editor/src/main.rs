@@ -11,6 +11,7 @@ use tui::{backend::CrosstermBackend, Terminal};
 
 mod editor;
 mod enums;
+mod functions;
 mod kass;
 mod mode_handlers;
 mod position;

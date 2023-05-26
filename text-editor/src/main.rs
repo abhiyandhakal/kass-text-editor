@@ -19,7 +19,10 @@ mod position;
 fn main() {
     let mut kass_editor = match Kass::new() {
         Ok(editor) => Some(editor),
-        Err(_) => None,
+        Err(e) => {
+            println!("{}", e);
+            None
+        }
     };
 
     if let Some(editor) = &mut kass_editor {

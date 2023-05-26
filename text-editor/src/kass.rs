@@ -183,11 +183,6 @@ impl Kass {
         ))));
         let info_paragraph = Paragraph::new(Text::from(self.app.info.clone()));
         frame.render_widget(
-            // if self.app.is_error {
-            //     error_paragraph
-            // } else {
-            //     command_paragraph
-            // },
             match self.app.action {
                 Action::Command => command_paragraph,
                 Action::Info => info_paragraph,
@@ -223,9 +218,16 @@ impl Kass {
 
         frame.render_widget(tabs, chunks[0]);
 
+        // editor chunk
+        let editor_chunk = Layout::default()
+            .margin(0)
+            .direction(tui::layout::Direction::Horizontal)
+            .constraints([Constraint::Length(6), Constraint::Min(1)].as_ref())
+            .split(chunks[1]);
+
         // editor height and width
-        let editor_height = chunks[1].height - 2;
-        let editor_width = chunks[1].width;
+        let editor_height = editor_chunk[1].height - 2;
+        let editor_width = editor_chunk[1].width;
         self.editor_size = (editor_width, editor_height);
         self.app.tabs[self.app.active_index].boundary(editor_width, editor_height); //setting height and width
 
@@ -268,7 +270,22 @@ impl Kass {
             })
             .collect();
 
-        let rows = List::new(rows).block(Block::default().borders(Borders::ALL));
+        let line_numbers: Vec<ListItem> = new_rows
+            .iter()
+            .enumerate()
+            .map(|(i, _m)| {
+                let number = vec![Spans::from(Span::raw(format!(
+                    "{}",
+                    i + 1 + self.app.tabs[self.app.active_index].rowoff as usize
+                )))];
+                ListItem::new(number)
+            })
+            .collect();
+
+        let rows = List::new(rows)
+            .block(Block::default().borders(Borders::RIGHT | Borders::TOP | Borders::BOTTOM));
+        let line_numbers = List::new(line_numbers)
+            .block(Block::default().borders(Borders::LEFT | Borders::TOP | Borders::BOTTOM));
 
         // update cursor
 
@@ -277,7 +294,8 @@ impl Kass {
             self.app.tabs[self.app.active_index].cursor.y,
         );
 
-        frame.render_widget(rows, chunks[1]);
+        frame.render_widget(line_numbers, editor_chunk[0]);
+        frame.render_widget(rows, editor_chunk[1]);
 
         // cursor stuff
         match self.app.mode {
@@ -296,16 +314,16 @@ impl Kass {
 
             Mode::Normal => frame.set_cursor(
                 if self.cursor.x == 0 {
-                    chunks[1].x + 1
+                    editor_chunk[1].x
                 } else {
-                    chunks[1].x + self.cursor.x
+                    editor_chunk[1].x + self.cursor.x - 1
                 },
-                chunks[1].y + self.cursor.y + 1,
+                editor_chunk[1].y + self.cursor.y + 1,
             ),
 
             _ => frame.set_cursor(
-                chunks[1].x + self.cursor.x + 1,
-                chunks[1].y + self.cursor.y + 1,
+                editor_chunk[1].x + self.cursor.x,
+                editor_chunk[1].y + self.cursor.y + 1,
             ),
         }
     }

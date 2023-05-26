@@ -269,23 +269,4 @@ impl Editor {
             true
         }
     }
-
-    fn scroll(&mut self) {
-        // for vertical scrolling
-        let terminal_height = self.bounds.1.x2 - self.rowoff - 2;
-        if self.cursor.y < self.rowoff {
-            self.rowoff = self.cursor.y;
-        }
-        if self.cursor.y >= self.rowoff + terminal_height {
-            self.rowoff = self.cursor.y - terminal_height + 1;
-        }
-
-        // for horizontal scrolling
-        if self.cursor.x < self.coloff {
-            self.coloff = self.cursor.x;
-        }
-        if self.cursor.x >= self.coloff + self.bounds.1.x2 {
-            self.coloff = self.cursor.x - self.bounds.1.x2 + 1;
-        }
-    }
 }

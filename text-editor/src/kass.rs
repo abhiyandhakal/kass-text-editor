@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     env::current_dir,
     format,
     io::{stdout, Result},
@@ -261,6 +262,7 @@ impl Kass {
             }
         }
 
+        // for displaying content of the editor
         let rows: Vec<ListItem> = new_rows
             .iter()
             .enumerate()
@@ -270,14 +272,32 @@ impl Kass {
             })
             .collect();
 
-        let line_numbers: Vec<ListItem> = new_rows
+        let line_numbers: Vec<ListItem> = self.app.tabs[self.app.active_index]
+            .rows
             .iter()
             .enumerate()
             .map(|(i, _m)| {
-                let number = vec![Spans::from(Span::raw(format!(
-                    "{}",
-                    i + 1 + self.app.tabs[self.app.active_index].rowoff as usize
-                )))];
+                let row = i as u16 + self.app.tabs[self.app.active_index].rowoff;
+                // Displays the relative line number
+                let cursor_at = self.app.tabs[self.app.active_index].cursor.y
+                    + self.app.tabs[self.app.active_index].rowoff;
+                let line_order = cursor_at.cmp(&row);
+
+                let relative_ln = match line_order {
+                    Ordering::Equal => row + 1,
+                    Ordering::Greater => cursor_at - row,
+                    Ordering::Less => row - cursor_at,
+                };
+
+                let number = vec![Spans::from(Span::styled(
+                    if line_order == Ordering::Equal {
+                        format!("{:<4}", relative_ln)
+                    } else {
+                        format!("{:4}", relative_ln)
+                    },
+                    Style::default().fg(Color::DarkGray),
+                ))];
+
                 ListItem::new(number)
             })
             .collect();

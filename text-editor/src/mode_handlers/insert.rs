@@ -1,6 +1,6 @@
 use std::io::Result;
 
-use crossterm::event;
+use crossterm::{cursor, event};
 
 use crate::{enums::Mode, kass::Kass};
 
@@ -25,6 +25,12 @@ pub fn handle_insert_mode(kass: &mut Kass) -> Result<()> {
         }
         event::KeyCode::Enter => {
             kass.app.tabs[kass.app.active_index].goto_newline()?;
+        }
+        event::KeyCode::Tab => {
+            let spaces: String = (0..4).map(|_| ' ').collect();
+            kass.app.tabs[kass.app.active_index].rows[curr_row]
+                .insert_str(kass.cursor.x as usize, &spaces);
+            kass.app.tabs[kass.app.active_index].cursor.x += 4;
         }
         event::KeyCode::Esc => {
             kass.app.mode = Mode::Normal;

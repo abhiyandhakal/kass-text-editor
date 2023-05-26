@@ -103,7 +103,8 @@ impl Editor {
         };
 
         self.title = file_name;
-        self.rows = Self::file_to_rows(filepath.clone())?;
+        self.filepath = filepath;
+        self.rows = Self::file_to_rows(self.filepath.clone())?;
 
         Ok(())
     }

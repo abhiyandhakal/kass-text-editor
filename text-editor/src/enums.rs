@@ -11,3 +11,10 @@ pub enum Action {
     Error,
     Info,
 }
+
+#[derive(Debug, Clone, Copy)]
+pub enum LineNumber {
+    None,
+    Relative,
+    Absolute,
+}

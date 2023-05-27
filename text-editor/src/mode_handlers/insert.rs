@@ -1,6 +1,6 @@
 use std::io::Result;
 
-use crossterm::{cursor, event};
+use crossterm::event;
 
 use crate::{enums::Mode, kass::Kass};
 

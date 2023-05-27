@@ -45,7 +45,11 @@ impl Editor {
     }
 
     pub fn new(filepath: String) -> Result<Editor> {
-        let rows = Self::file_to_rows(filepath.clone())?;
+        let mut rows = Self::file_to_rows(filepath.clone())?;
+
+        if rows.len() == 0 {
+            rows.push(String::new())
+        }
 
         let file_name: String = match Path::new(filepath.as_str()).file_name() {
             Some(filename) => filename.to_string_lossy().to_string(),
@@ -105,6 +109,10 @@ impl Editor {
         self.title = file_name;
         self.filepath = filepath;
         self.rows = Self::file_to_rows(self.filepath.clone())?;
+
+        if self.rows.len() == 0 {
+            self.rows.push(String::new());
+        }
 
         Ok(())
     }

@@ -6,7 +6,7 @@ pub enum Mode {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum Action {
+pub enum CommandAction {
     Command,
     Error,
     Info,
@@ -17,4 +17,16 @@ pub enum LineNumber {
     None,
     Relative,
     Absolute,
+}
+
+#[derive(Debug)]
+pub enum Element {
+    Num(usize),
+    Char(char),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Action {
+    Delete,
+    Default,
 }

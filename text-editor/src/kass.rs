@@ -22,7 +22,7 @@ pub struct App {
     pub error: String,
     pub info: String,
 
-    pub action: Action,
+    pub action: CommandAction,
     pub clipboard: Vec<String>,
     pub active_index: usize,
 }
@@ -45,7 +45,7 @@ impl App {
             active_index: 0,
             error: String::new(),
             info: String::new(),
-            action: Action::Command,
+            action: CommandAction::Command,
         })
     }
     pub fn next(&mut self) {
@@ -145,12 +145,12 @@ impl Kass {
     }
 
     pub fn set_info(&mut self, info: &str) {
-        self.app.action = Action::Info;
+        self.app.action = CommandAction::Info;
         self.app.info = info.to_string();
     }
 
     pub fn set_error(&mut self, error: &str) {
-        self.app.action = Action::Error;
+        self.app.action = CommandAction::Error;
         self.app.error = error.to_string();
     }
 }

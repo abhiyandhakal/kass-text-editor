@@ -4,10 +4,7 @@ use crossterm::event::{self, KeyCode};
 use serde_json::Value;
 
 use crate::functions;
-use crate::{
-    enums::{Action, Mode},
-    kass::Kass,
-};
+use crate::{enums::Mode, kass::Kass};
 
 pub fn handle_command_mode(kass: &mut Kass, close: &mut bool, config: &Value) -> Result<()> {
     let mut prefix_with_function_list: Vec<(&str, fn(&str, &mut bool, &mut Kass))> = vec![];
@@ -67,8 +64,7 @@ pub fn handle_command_mode(kass: &mut Kass, close: &mut bool, config: &Value) ->
             }
         }
     } else {
-        kass.app.action = Action::Error;
-        kass.app.error = "Commands not found in the config".to_string();
+        kass.set_error("Commands not found in the config");
     }
 
     match kass.key_event.code {
@@ -90,10 +86,7 @@ pub fn handle_command_mode(kass: &mut Kass, close: &mut bool, config: &Value) ->
                     .find(|(p, _)| *p == prefix)
                 {
                     Some((_, func)) => func(rest, close, kass),
-                    None => {
-                        kass.app.action = Action::Error;
-                        kass.app.error = "Command not found.".to_string();
-                    }
+                    None => kass.set_error("Command not found."),
                 }
             }
 

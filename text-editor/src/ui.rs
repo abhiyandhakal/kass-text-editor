@@ -24,9 +24,9 @@ fn command_ui(kass: &mut Kass) -> Paragraph {
     let info_paragraph = Paragraph::new(Text::from(kass.app.info.clone()));
 
     match kass.app.action {
-        Action::Command => command_paragraph,
-        Action::Info => info_paragraph,
-        Action::Error => error_paragraph,
+        CommandAction::Command => command_paragraph,
+        CommandAction::Info => info_paragraph,
+        CommandAction::Error => error_paragraph,
     }
 }
 
@@ -136,10 +136,13 @@ fn editor_ui(kass: &mut Kass) -> (List, List) {
             .iter()
             .enumerate()
             .map(|(i, _m)| {
-                let number = vec![Spans::from(Span::raw(format!(
-                    "{}",
-                    i + 1 + kass.app.tabs[kass.app.active_index].rowoff as usize
-                )))];
+                let number = vec![Spans::from(Span::styled(
+                    format!(
+                        "{}",
+                        i + 1 + kass.app.tabs[kass.app.active_index].rowoff as usize
+                    ),
+                    Style::default().fg(Color::DarkGray),
+                ))];
                 ListItem::new(number)
             })
             .collect(),
@@ -208,7 +211,7 @@ pub fn ui<B: Backend>(kass: &mut Kass, frame: &mut Frame<B>) {
     frame.render_widget(command_ui(kass), chunks[3]);
     frame.render_widget(tabs_ui(kass), chunks[0]);
 
-    kass.app.action = Action::Command;
+    kass.app.action = CommandAction::Command;
 
     // editor chunk
     let editor_chunk = Layout::default()
@@ -255,7 +258,7 @@ pub fn ui<B: Backend>(kass: &mut Kass, frame: &mut Frame<B>) {
                 }
             } else {
                 match kass.line_number {
-                    LineNumber::None => editor_chunk[1].x + kass.cursor.x + 1,
+                    LineNumber::None => editor_chunk[1].x + kass.cursor.x,
                     _ => editor_chunk[1].x + kass.cursor.x - 1,
                 }
             },
@@ -263,7 +266,12 @@ pub fn ui<B: Backend>(kass: &mut Kass, frame: &mut Frame<B>) {
         ),
 
         _ => frame.set_cursor(
-            editor_chunk[1].x + kass.cursor.x,
+            editor_chunk[1].x
+                + kass.cursor.x
+                + match kass.line_number {
+                    LineNumber::None => 1,
+                    _ => 0,
+                },
             editor_chunk[1].y + kass.cursor.y + 1,
         ),
     }

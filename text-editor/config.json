@@ -1,9 +1,15 @@
 {
-	"commands": {
+	"line_number": "relative",
+	"command_mode": {
 		"edit_file": "e",
 		"quit": "q",
 		"quit_all": "qa",
 		"new_tab": "tabnew",
-		"write": "w"
+		"write": "w",
+		"force_quit": "q!",
+		"force_quit_all": "qa!",
+		"write_all": "wa",
+		"write_and_quit": "wq",
+		"write_and_quit_all": "wqa"
 	}
 }

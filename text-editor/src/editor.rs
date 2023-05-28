@@ -1,6 +1,6 @@
 use std::{
     fs::{read_to_string, OpenOptions},
-    io::{prelude::*, Result},
+    io::{prelude::*, stdout, Result},
     path::Path,
 };
 
@@ -31,7 +31,6 @@ impl Editor {
         if Path::new(filepath.as_str()).is_file() {
             let content = read_to_string(filepath)?;
 
-            // let myrows = content.split('\n').collect();
             rows = content.lines().map(String::from).collect();
         }
 
@@ -172,19 +171,8 @@ impl Editor {
                 self.rowoff += 1;
             }
         }
-
-        // execute!(stdout()
-        //     .queue(cursor::MoveTo(40, 6))
-        //     .expect("err")
-        //     .queue(Print(format!(
-        //         "{} ,{}, {}, {}",
-        //         self.rows.len(),
-        //         curr_row,
-        //         self.cursor.y,
-        //         self.rowoff
-        //     )))
-        //     .expect("err"));
     }
+
     pub fn move_up(&mut self, steps: u16) {
         let curr_row = self.cursor.y + self.rowoff;
 

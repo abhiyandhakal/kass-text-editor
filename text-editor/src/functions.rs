@@ -2,6 +2,20 @@ use std::path::Path;
 
 use crate::{editor::Editor, kass::Kass};
 
+pub fn goto_line(kass: &mut Kass, line_number: usize) {
+    let current_pos = kass.app.tabs[kass.app.active_index].rowoff + kass.cursor.y;
+
+    if current_pos >= line_number as u16 - 1 {
+        for _ in 0..current_pos - line_number as u16 + 1 {
+            kass.app.tabs[kass.app.active_index].move_up(1);
+        }
+    } else {
+        for _ in 0..line_number as u16 - 1 - current_pos {
+            kass.app.tabs[kass.app.active_index].move_down(1);
+        }
+    }
+}
+
 pub fn edit_file(input: &str, _close: &mut bool, kass: &mut Kass) {
     if !Path::new(input).is_dir() {
         match kass.app.tabs[kass.app.active_index].set_filepath(input.to_string()) {

@@ -3,7 +3,7 @@ use std::io::Result;
 use crossterm::event::{self, KeyCode};
 use serde_json::Value;
 
-use crate::functions;
+use crate::functions::{self, goto_line};
 use crate::{enums::Mode, kass::Kass};
 
 pub fn handle_command_mode(kass: &mut Kass, close: &mut bool, config: &Value) -> Result<()> {
@@ -80,13 +80,32 @@ pub fn handle_command_mode(kass: &mut Kass, close: &mut bool, config: &Value) ->
             let mut separated = command.splitn(2, ' ');
 
             if let Some(prefix) = separated.next() {
-                let rest = separated.next().unwrap_or("");
-                match prefix_with_function_list
-                    .iter_mut()
-                    .find(|(p, _)| *p == prefix)
-                {
-                    Some((_, func)) => func(rest, close, kass),
-                    None => kass.set_error("Command not found."),
+                let mut is_num = false;
+
+                let mut line_number = String::new();
+
+                for ch in prefix.chars() {
+                    if ch.is_digit(10) {
+                        line_number.push(ch);
+                        is_num = true;
+                    } else {
+                        is_num = false;
+                    }
+                }
+
+                if is_num {
+                    goto_line(kass, line_number.parse().expect("failed to parse"));
+                } else {
+                    let rest = separated.next().unwrap_or("");
+                    match prefix_with_function_list
+                        .iter_mut()
+                        .find(|(p, _)| *p == prefix)
+                    {
+                        Some((_, func)) => {
+                            func(rest, close, kass);
+                        }
+                        None => kass.set_error("Command not found."),
+                    }
                 }
             }
 

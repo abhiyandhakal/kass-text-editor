@@ -5,11 +5,19 @@ use crate::{editor::Editor, kass::Kass};
 pub fn goto_line(kass: &mut Kass, line_number: usize) {
     let current_pos = kass.app.tabs[kass.app.active_index].rowoff + kass.cursor.y;
 
-    if current_pos >= line_number as u16 - 1 {
+    if line_number == kass.app.tabs[kass.app.active_index].rows.len() {
+        let last_line = kass.app.tabs[kass.app.active_index].rows.len() - 1;
+
+        kass.app.tabs[kass.app.active_index].cursor.y =
+            kass.app.tabs[kass.app.active_index].editor_size.y - 1;
+
+        kass.app.tabs[kass.app.active_index].rowoff =
+            last_line as u16 - kass.app.tabs[kass.app.active_index].editor_size.y + 1;
+    } else if current_pos >= line_number as u16 - 1 {
         for _ in 0..current_pos - line_number as u16 + 1 {
             kass.app.tabs[kass.app.active_index].move_up(1);
         }
-    } else {
+    } else if current_pos < line_number as u16 - 1 {
         for _ in 0..line_number as u16 - 1 - current_pos {
             kass.app.tabs[kass.app.active_index].move_down(1);
         }

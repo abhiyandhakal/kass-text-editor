@@ -17,7 +17,6 @@ pub fn handle_insert_mode(kass: &mut Kass) -> Result<()> {
                     .insert(kass.cursor.x as usize, c);
             }
 
-            // kass.app.tabs[kass.app.active_index].move_right(1);
             kass.app.tabs[kass.app.active_index].cursor.x += 1;
         }
         event::KeyCode::Backspace => {

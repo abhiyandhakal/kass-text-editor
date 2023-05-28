@@ -116,7 +116,7 @@ fn editor_ui(kass: &mut Kass) -> (List, List) {
 
         i += 1;
 
-        if i as usize == kass.app.tabs[kass.app.active_index].rows.len() || i == bound_y.x2 {
+        if i as usize == kass.app.tabs[kass.app.active_index].rows.len() || i == bound_y.x2 + 1 {
             break;
         }
     }
@@ -198,10 +198,10 @@ pub fn ui<B: Backend>(kass: &mut Kass, frame: &mut Frame<B>) {
     let chunks = Layout::default()
         .constraints(
             [
-                Constraint::Length(3),
-                Constraint::Min(1),
-                Constraint::Length(1),
-                Constraint::Length(1),
+                Constraint::Length(3), // tabs
+                Constraint::Min(1),    // editor
+                Constraint::Length(1), // statusline
+                Constraint::Length(1), // command section
             ]
             .as_ref(),
         )

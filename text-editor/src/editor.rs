@@ -1,6 +1,6 @@
 use std::{
     fs::{read_to_string, OpenOptions},
-    io::{prelude::*, stdout, Result},
+    io::{prelude::*, Result},
     path::Path,
 };
 
@@ -208,7 +208,7 @@ impl Editor {
     }
 
     pub fn goto_newline(&mut self) -> Result<()> {
-        let row_idx = self.cursor.y as usize + self.rowoff as usize;
+        let row_idx = (self.cursor.y + self.rowoff) as usize;
 
         if self.cursor.x == 0 {
             self.insert_row(row_idx, String::from(""));
@@ -219,7 +219,7 @@ impl Editor {
 
         self.cursor.x = 0;
 
-        if self.cursor.y <= self.bounds.1.x2 - self.rowoff - 2 {
+        if self.cursor.y <= self.editor_size.y - 1 {
             self.cursor.y += 1;
         } else {
             self.rowoff += 1;
@@ -230,14 +230,14 @@ impl Editor {
 
     // handling deletion of character
     pub fn delete(&mut self) {
-        if self.cursor.y > self.rows.len() as u16 {
+        let curr_row = (self.cursor.y + self.rowoff) as usize;
+
+        if curr_row > self.rows.len() {
             return;
         }
         if self.cursor.x == 0 && self.cursor.y == 0 {
             return;
         }
-
-        let curr_row = self.cursor.y as usize;
 
         if self.cursor.x > 0 {
             if self.del_char(self.cursor.x as usize - 1) {
@@ -258,10 +258,12 @@ impl Editor {
     }
 
     fn del_char(&mut self, idx: usize) -> bool {
-        if idx >= self.rows[self.cursor.y as usize].len() {
+        let curr_row = (self.cursor.y + self.rowoff) as usize;
+
+        if idx >= self.rows[curr_row].len() {
             false
         } else {
-            self.rows[self.cursor.y as usize].remove(idx);
+            self.rows[curr_row].remove(idx);
             true
         }
     }

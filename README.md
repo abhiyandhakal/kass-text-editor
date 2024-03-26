@@ -5,7 +5,7 @@ This is a terminal based text editor.
 
 This editor is written entirely in Rust.
 
-To use, clone this repository and run
+To use, clone this repository, move the config.json file in the config directory (in linux and MacOS `~/.config/kass`) and run
 ```
 cargo run <filepath/filename>
 ```
